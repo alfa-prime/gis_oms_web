@@ -1,0 +1,10 @@
+.venv
+.idea
+__pycache__/
+temp
+handbooks
+.env
+*.json
+*.py[cod]
+*.pyo
+*.log
