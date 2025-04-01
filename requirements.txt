@@ -1,0 +1,9 @@
+fastapi==0.115.12
+httpx==0.28.1
+pydantic-settings==2.8.1
+tenacity==9.0.0
+uvicorn==0.34.0
+loguru==0.7.3
+aiofiles==24.1.0
+aiopath==0.6.11
+xmltodict==0.14.2
