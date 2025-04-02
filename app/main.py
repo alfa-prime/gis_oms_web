@@ -2,9 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.core.handbooks import load_handbook, handbooks_storage
-from app.core.httpx_client import HTTPXClient
-from app.core.logger import logger
+from app.core import HTTPXClient, logger, load_handbook, handbooks_storage
 from app.route import router as api_router
 
 
