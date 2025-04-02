@@ -1,9 +1,11 @@
 import functools
-import traceback
 import time
+import traceback
 from typing import Callable, Awaitable, Any, Type, Dict
+
 from fastapi import HTTPException, status, Request
-from app.core.logger import logger
+
+from app.core import logger
 
 
 def log_and_catch(debug: bool = True) -> Callable[..., Awaitable[Any]]:
@@ -77,7 +79,8 @@ def log_and_catch(debug: bool = True) -> Callable[..., Awaitable[Any]]:
     return decorator
 
 
-def route_handler(debug: bool = True, custom_errors: Dict[Type[Exception], int] = None) -> Callable[..., Awaitable[Any]]:
+def route_handler(debug: bool = True, custom_errors: Dict[Type[Exception], int] = None) -> Callable[
+    ..., Awaitable[Any]]:
     """
     Декоратор для обработки ошибок и логирования в роутах FastAPI.
     :param debug: Включает подробное логгирование аргументов, результата и трейса ошибок.
@@ -85,13 +88,13 @@ def route_handler(debug: bool = True, custom_errors: Dict[Type[Exception], int] 
     """
     # Сокращённый список стандартных ошибок
     DEFAULT_CUSTOM_ERRORS = {
-        ValueError: status.HTTP_400_BAD_REQUEST,        # Невалидные данные
-        TypeError: status.HTTP_400_BAD_REQUEST,         # Неправильный тип
-        KeyError: status.HTTP_400_BAD_REQUEST,          # Отсутствие ключа
-        IndexError: status.HTTP_400_BAD_REQUEST,        # Выход за пределы списка
-        AttributeError: status.HTTP_400_BAD_REQUEST,    # Обращение к несуществующему атрибуту
-        PermissionError: status.HTTP_403_FORBIDDEN,     # Нет прав
-        FileNotFoundError: status.HTTP_404_NOT_FOUND,   # Ресурс не найден
+        ValueError: status.HTTP_400_BAD_REQUEST,  # Невалидные данные
+        TypeError: status.HTTP_400_BAD_REQUEST,  # Неправильный тип
+        KeyError: status.HTTP_400_BAD_REQUEST,  # Отсутствие ключа
+        IndexError: status.HTTP_400_BAD_REQUEST,  # Выход за пределы списка
+        AttributeError: status.HTTP_400_BAD_REQUEST,  # Обращение к несуществующему атрибуту
+        PermissionError: status.HTTP_403_FORBIDDEN,  # Нет прав
+        FileNotFoundError: status.HTTP_404_NOT_FOUND,  # Ресурс не найден
         TimeoutError: status.HTTP_504_GATEWAY_TIMEOUT,  # Таймаут
         ConnectionError: status.HTTP_503_SERVICE_UNAVAILABLE,  # Ошибка соединения
         NotImplementedError: status.HTTP_501_NOT_IMPLEMENTED,  # Не реализовано
@@ -114,7 +117,8 @@ def route_handler(debug: bool = True, custom_errors: Dict[Type[Exception], int] 
                 if args:
                     logger.debug(f"[ROUTE] args: {str(args)[:300]}")
                 if kwargs:
-                    kwargs_preview = {k: str(v)[:50] + "..." if isinstance(v, str) and len(str(v)) > 50 else v for k, v in kwargs.items()}
+                    kwargs_preview = {k: str(v)[:50] + "..." if isinstance(v, str) and len(str(v)) > 50 else v for k, v
+                                      in kwargs.items()}
                     logger.debug(f"[ROUTE] kwargs: {kwargs_preview}")
 
             start_time = time.perf_counter()
@@ -137,7 +141,8 @@ def route_handler(debug: bool = True, custom_errors: Dict[Type[Exception], int] 
                 tb = traceback.extract_tb(e.__traceback__)
                 last_frame = tb[-1] if tb else None
                 lineno = last_frame.lineno if last_frame else "?"
-                logger.error(f"[ROUTE] ❌ Ошибка в {func_name} (строка {lineno}) — {method} {route_path} за {duration}s: {e}")
+                logger.error(
+                    f"[ROUTE] ❌ Ошибка в {func_name} (строка {lineno}) — {method} {route_path} за {duration}s: {e}")
                 if debug:
                     logger.debug(f"[ROUTE] Трейс:\n{''.join(traceback.format_tb(e.__traceback__))[:1000]}")
 
@@ -148,6 +153,5 @@ def route_handler(debug: bool = True, custom_errors: Dict[Type[Exception], int] 
                 )
 
         return wrapper
+
     return decorator
-
-

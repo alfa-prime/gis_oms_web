@@ -1,9 +1,12 @@
 from functools import lru_cache
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent  # Корень проекта
 DOWNLOADED_DATA_DIR = BASE_DIR / "downloaded_data"
+
+
 # HANDBOOKS_DIR = BASE_DIR / "handbooks"
 
 

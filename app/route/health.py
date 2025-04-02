@@ -1,7 +1,6 @@
 from fastapi import APIRouter
 
-from app.core.config import get_settings
-from app.core.httpx_client import HTTPXClient
+from app.core import get_settings, HTTPXClient
 
 settings = get_settings()
 

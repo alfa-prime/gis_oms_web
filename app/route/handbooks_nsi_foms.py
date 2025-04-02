@@ -1,12 +1,12 @@
-from fastapi import APIRouter, Query, HTTPException, status
-import xmltodict
 import asyncio
 from pathlib import Path as SyncPath
+
+import xmltodict
 from aiopath import Path as AsyncPath
-from app.core.httpx_client import HTTPXClient
-from app.core.logger import logger
-from app.core.config import get_settings
-from app.services.tools.tools import save_file, is_zip_file, extract_zip_safely, save_handbook, delete_files
+from fastapi import APIRouter, Query, HTTPException, status
+
+from app.core import HTTPXClient, logger, get_settings
+from app.services import save_file, is_zip_file, extract_zip_safely, save_handbook, delete_files
 
 router = APIRouter(prefix="/nsi_foms_handbooks", tags=["Справочники НСИ ФОМС"])
 
@@ -50,7 +50,6 @@ async def xml_to_dict(file_path: SyncPath) -> dict:
     except Exception as e:
         logger.error(f"Ошибка обработки XML: {e}")
         return {"success": False, "message": f"Ошибка обработки XML: {e}"}
-
 
 
 @router.get("/get_medical_organization_registry")
@@ -115,10 +114,7 @@ async def get_medical_organization_registry(
         if not processed_data["success"]:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=processed_data["message"])
 
-
         raw_data = processed_data.get("zap", {})
-
-
 
         # Сохраняем справочник
         await save_handbook(processed_data, output_file)
@@ -140,5 +136,3 @@ async def get_medical_organization_registry(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Ошибка при загрузке и обработке файла"
         )
-
-

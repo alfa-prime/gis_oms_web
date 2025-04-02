@@ -3,9 +3,7 @@ from pathlib import Path
 
 from fastapi import HTTPException
 
-from app.core.config import get_settings
-from app.core.httpx_client import HTTPXClient
-from app.core.logger import logger
+from app.core import get_settings, HTTPXClient, logger
 
 settings = get_settings()
 

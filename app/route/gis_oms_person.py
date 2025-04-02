@@ -2,12 +2,9 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.core.config import get_settings
-from app.core.decorators import route_handler
-from app.core.httpx_client import HTTPXClient
-from app.core.logger import logger
-from app.models.patient import PatientSearch
-from app.services.cookies.cookies import set_cookies
+from app.core import get_settings, route_handler, HTTPXClient, logger
+from app.models import PatientSearch
+from app.services import set_cookies
 
 settings = get_settings()
 

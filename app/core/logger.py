@@ -2,7 +2,8 @@ import logging
 import sys
 
 from loguru import logger
-from app.core.config import  get_settings
+
+from app.core import get_settings
 
 settings = get_settings()
 

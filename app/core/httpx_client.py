@@ -65,11 +65,6 @@ class HTTPXClient:
         before_sleep=lambda r: logger.warning(
             f"[HTTPX] Повтор {r.attempt_number}: {type(r.outcome.exception()).__name__} — {r.outcome.exception()}"
         )
-        # before_sleep=lambda retry_state: logger.warning(
-        #     f"[HTTPXClient] Повтор запроса {retry_state.attempt_number} "
-        #     f"на {retry_state.args[1] if len(retry_state.args) > 1 else 'неизвестный URL'} "
-        #     f"({retry_state.outcome.exception()})"
-        # )
     )
     @log_and_catch(debug=settings.DEBUG_HTTP)
     async def fetch(
@@ -120,12 +115,3 @@ class HTTPXClient:
             json=json_data
 
         )
-
-        # except httpx.HTTPStatusError as e:
-        #     # Логируем ошибку, если статус ответа 4xx/5xx
-        #     logger.error(f"Ошибка HTTP: {e.response.status_code} - {e.response.text}")
-        #     raise
-        #
-        # except AttributeError as e:
-        #     logger.error(f"AttributeError в fetch(): {e}")  # Выведет точную ошибку
-        #     raise

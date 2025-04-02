@@ -1,10 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.services.cookies.cookies import set_cookies
-from app.core.logger import logger
-from app.core.httpx_client import HTTPXClient
-from app.core.config import get_settings
-from app.services.tools.tools import save_handbook
+from app.services import set_cookies, save_handbook
+from app.core import logger, HTTPXClient, get_settings
 
 settings = get_settings()
 

@@ -1,10 +1,10 @@
-import aiofiles
 import json
 from pathlib import Path
 from typing import Any, Dict
 
-from app.core.logger import logger
-from app.core.config import get_settings
+import aiofiles
+
+from app.core import logger, get_settings
 
 settings = get_settings()
 HANDBOOKS_DIR = settings.HANDBOOKS_DIR
@@ -12,7 +12,8 @@ HANDBOOKS_DIR = settings.HANDBOOKS_DIR
 
 class HandbooksStorage:
     """ Хранилище справочников, доступные глобально"""
-    handbooks: Dict[str, Dict[str,Any]] = {}
+    handbooks: Dict[str, Dict[str, Any]] = {}
+
 
 handbooks_storage = HandbooksStorage()
 
@@ -33,7 +34,7 @@ async def load_handbook(handbook_name: str) -> Dict[str, Any]:
         async with aiofiles.open(handbook_path, mode="r", encoding="utf-8") as file:
             content = await file.read()
             handbook = json.loads(content)
-        logger.info (f"Handbook {handbook_name} loaded successfully")
+        logger.info(f"Handbook {handbook_name} loaded successfully")
         return handbook
     except FileNotFoundError:
         logger.error(f"Handbook {handbook_name} not found")

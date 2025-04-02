@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.services.handbooks.nsi import fetch_and_process_handbook, process_insurance_file, process_rf_subjects_file
+from app.services import fetch_and_process_handbook, process_insurance_file, process_rf_subjects_file
 
 router = APIRouter(prefix="/nsi_handbooks", tags=["Справочники НСИ"])
 
