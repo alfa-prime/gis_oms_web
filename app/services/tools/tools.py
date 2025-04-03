@@ -8,7 +8,7 @@ from aiopath import Path as AsyncPath
 from fastapi import HTTPException, status
 
 from app.core.config import get_settings
-from app.core.logger import logger
+from app.core.logger_setup import logger
 
 settings = get_settings()
 

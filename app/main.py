@@ -44,7 +44,6 @@ async def lifespan(app: FastAPI):  # noqa
 
 tags_metadata = [
     {"name": "Health check", "description": "Проверка состояния API, HTTP клиента"},
-    {"name": "Collect data from GIS OMS [group]", "description": "Сбор данных из ЕВМИАС для ГИС ОМС"}
 ]
 
 app = FastAPI(

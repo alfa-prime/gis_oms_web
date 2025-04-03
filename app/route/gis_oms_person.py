@@ -2,7 +2,8 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.core import get_settings, route_handler, HTTPXClient, logger
+from app.core import get_settings, HTTPXClient, logger, get_httpx_client
+from app.core.decorators import route_handler
 from app.models import PatientSearch
 from app.services import set_cookies
 
@@ -49,7 +50,8 @@ async def get_patient_operations(cookies: dict[str, str], event_id: str):
 @route_handler(debug=settings.DEBUG_ROUTE)
 async def get_patient(
         patient_search: PatientSearch,
-        cookies: dict[str, str] = Depends(set_cookies)
+        cookies: dict[str, str] = Depends(set_cookies),
+        httpx_client: HTTPXClient = Depends(get_httpx_client)
 ):
     # запрашиваем первоначальные данные пациента по данным из веб=формы
     # try:
@@ -76,7 +78,7 @@ async def get_patient(
     if patient_search.birthday:
         data["Person_Birthday"] = patient_search.birthday
 
-    response = await HTTPXClient.fetch(
+    response = await httpx_client.fetch(
         url=url,
         method="POST",
         cookies=cookies,

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.services import set_cookies, save_handbook
-from app.core import logger, HTTPXClient, get_settings
+from app.core import logger, HTTPXClient, get_settings, get_httpx_client
 
 settings = get_settings()
 
@@ -20,7 +20,10 @@ router = APIRouter(prefix="/evmias_handbooks", tags=["Справочники Е�
 
 
 @router.get("/referred_by")
-async def get_referred_by_handbook(cookies: dict = Depends(set_cookies)):
+async def get_referred_by_handbook(
+        cookies: dict = Depends(set_cookies),
+        httpx_client: HTTPXClient = Depends(get_httpx_client)
+):
     """Получаем справочник с типами кто направил пациента (другая МО и прочее)"""
     try:
         logger.debug("Запрос справочника 'referred_by' начат")
@@ -39,7 +42,13 @@ async def get_referred_by_handbook(cookies: dict = Depends(set_cookies)):
             "object": "SFPrehospDirect"  # noqau
         }
 
-        response = await HTTPXClient.fetch(url=url, method="POST", cookies=cookies, params=params, headers=headers)
+        response = await httpx_client.fetch(
+            url=url,
+            method="POST",
+            cookies=cookies,
+            params=params,
+            headers=headers
+        )
 
         result = {}
         for entry in response['json']:
@@ -65,7 +74,10 @@ async def get_referred_by_handbook(cookies: dict = Depends(set_cookies)):
 
 
 @router.get("/lpu_departments")
-async def get_lpu_departments_handbook(cookies: dict = Depends(set_cookies)):
+async def get_lpu_departments_handbook(
+        cookies: dict = Depends(set_cookies),
+        httpx_client: HTTPXClient = Depends(get_httpx_client)
+):
     """Получаем справочник отделений МО"""
     try:
         logger.debug("Запрос справочника 'lpu_departments' начат")
@@ -75,8 +87,14 @@ async def get_lpu_departments_handbook(cookies: dict = Depends(set_cookies)):
         data = {
             "Lpu_id": LPU_ID,
         }
-        response = await HTTPXClient.fetch(url=url, method="POST", cookies=cookies, params=params, data=data,
-                                           headers=headers)
+        response = await httpx_client.fetch(
+            url=url,
+            method="POST",
+            cookies=cookies,
+            params=params,
+            data=data,
+            headers=headers
+        )
 
         result = {}
         for entry in response['json']:
@@ -94,7 +112,10 @@ async def get_lpu_departments_handbook(cookies: dict = Depends(set_cookies)):
 
 
 @router.get("/referred_organizations")
-async def get_referred_organizations_handbook(cookies: dict = Depends(set_cookies)):
+async def get_referred_organizations_handbook(
+        cookies: dict = Depends(set_cookies),
+        httpx_client: HTTPXClient = Depends(get_httpx_client)
+):
     """Получаем справочник организаций, которые направляли пациента"""
     try:
         logger.debug("Запрос справочника 'referred_organizations' начат")
@@ -112,7 +133,7 @@ async def get_referred_organizations_handbook(cookies: dict = Depends(set_cookie
             "needOrgType": "1",
             "closedOrgs": "0",
         }
-        response = await HTTPXClient.fetch(
+        response = await httpx_client.fetch(
             url=url,
             method="POST",
             cookies=cookies,

@@ -1,14 +1,27 @@
 import json
 from typing import Optional, Dict, Any
+
 import httpx
+from httpx import AsyncClient
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from app.core.logger import logger
+from app.core import logger, get_settings
 from app.core.decorators import log_and_catch
-from app.core.config import get_settings
 
 settings = get_settings()
+# Глобальная настройка для включения отладочных логов
 DEBUG_HTTP = settings.DEBUG_HTTP
+
+
+async def get_httpx_client() -> AsyncClient:
+    """
+    Зависимость FastAPI для получения инициализированного HTTPX-клиента.
+
+    Возвращает:
+        AsyncClient: Готовый к использованию асинхронный HTTP-клиент.
+    """
+    return HTTPXClient.get_client()
+
 
 class HTTPXClient:
     """
@@ -36,7 +49,7 @@ class HTTPXClient:
       - `json` → JSON-ответ (dict | None, если ответ не JSON)
     """
 
-    _instance: Optional[httpx.AsyncClient] = None  # Глобальный клиент
+    _instance: Optional[httpx.AsyncClient] = None  # Единственный экземпляр клиента для всех запросов
 
     @classmethod
     async def initialize(cls):

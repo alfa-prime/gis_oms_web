@@ -49,7 +49,9 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_file=".env",  # Автоматически загружает переменные из .env
-        env_file_encoding="utf-8"  # Поддержка UTF-8
+        env_file_encoding="utf-8",  # Поддержка UTF-8
+        extra="ignore",  # Игнорирует неизвестные переменные окружения из .env
+
     )
 
 
