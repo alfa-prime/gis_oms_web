@@ -3,9 +3,9 @@ from pathlib import Path as SyncPath
 
 import xmltodict
 from aiopath import Path as AsyncPath
-from fastapi import APIRouter, Query, HTTPException, status, Depends
+from fastapi import APIRouter, Query, HTTPException, status
 
-from app.core import HTTPXClient, logger, get_settings, get_httpx_client
+from app.core import HTTPXClient, logger, get_settings
 from app.services import save_file, is_zip_file, extract_zip_safely, save_handbook, delete_files
 
 router = APIRouter(prefix="/nsi_foms_handbooks", tags=["Справочники НСИ ФОМС"])
@@ -55,7 +55,6 @@ async def xml_to_dict(file_path: SyncPath) -> dict:
 @router.get("/get_medical_organization_registry")
 async def get_medical_organization_registry(
         registry_code=Query(..., description="Код справочника", example="F030"),
-        httpx_client: HTTPXClient = Depends(get_httpx_client)
 ):
     """Получение справочника организаций"""
     url = f"{BASE_URL}/refbook"
@@ -77,7 +76,7 @@ async def get_medical_organization_registry(
 
     try:
         # Выполняем запрос на скачивание файла
-        file_response = await httpx_client.fetch(url=url, method="GET", params=params)
+        file_response = await HTTPXClient.fetch(url=url, method="GET", params=params)
         if file_response["status_code"] != 200:
             logger.error(f"Ошибка при скачивании файла: статус {file_response['status_code']}")
             raise HTTPException(

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.services import set_cookies, save_handbook
-from app.core import logger, HTTPXClient, get_settings, get_httpx_client
+from app.core import logger, HTTPXClient, get_settings
 
 settings = get_settings()
 
@@ -22,7 +22,6 @@ router = APIRouter(prefix="/evmias_handbooks", tags=["Справочники Е�
 @router.get("/referred_by")
 async def get_referred_by_handbook(
         cookies: dict = Depends(set_cookies),
-        httpx_client: HTTPXClient = Depends(get_httpx_client)
 ):
     """Получаем справочник с типами кто направил пациента (другая МО и прочее)"""
     try:
@@ -42,7 +41,7 @@ async def get_referred_by_handbook(
             "object": "SFPrehospDirect"  # noqau
         }
 
-        response = await httpx_client.fetch(
+        response = await HTTPXClient.fetch(
             url=url,
             method="POST",
             cookies=cookies,
@@ -76,7 +75,6 @@ async def get_referred_by_handbook(
 @router.get("/lpu_departments")
 async def get_lpu_departments_handbook(
         cookies: dict = Depends(set_cookies),
-        httpx_client: HTTPXClient = Depends(get_httpx_client)
 ):
     """Получаем справочник отделений МО"""
     try:
@@ -87,7 +85,7 @@ async def get_lpu_departments_handbook(
         data = {
             "Lpu_id": LPU_ID,
         }
-        response = await httpx_client.fetch(
+        response = await HTTPXClient.fetch(
             url=url,
             method="POST",
             cookies=cookies,
@@ -114,7 +112,6 @@ async def get_lpu_departments_handbook(
 @router.get("/referred_organizations")
 async def get_referred_organizations_handbook(
         cookies: dict = Depends(set_cookies),
-        httpx_client: HTTPXClient = Depends(get_httpx_client)
 ):
     """Получаем справочник организаций, которые направляли пациента"""
     try:
@@ -133,7 +130,7 @@ async def get_referred_organizations_handbook(
             "needOrgType": "1",
             "closedOrgs": "0",
         }
-        response = await httpx_client.fetch(
+        response = await HTTPXClient.fetch(
             url=url,
             method="POST",
             cookies=cookies,

@@ -3,8 +3,7 @@ from typing import List, Dict, Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.core import get_settings, HTTPXClient, logger, get_httpx_client
-from app.core.decorators import route_handler
+from app.core import get_settings, HTTPXClient, logger
 from app.models import PatientSearch
 from app.services import set_cookies
 
@@ -21,7 +20,6 @@ router = APIRouter(prefix="/evmias-oms", tags=["Сбор данных о пац�
 
 async def get_patient_operations(
         cookies: dict[str, str],
-        httpx_client: HTTPXClient,
         event_id: str | None
 ) -> Optional[List[Dict[str, Any]]]:
     """
@@ -44,7 +42,7 @@ async def get_patient_operations(
     data = {"pid": event_id, "parent": "EvnPS"}
 
     try:
-        response = await httpx_client.fetch(
+        response = await HTTPXClient.fetch(
             url=url,
             method="POST",
             cookies=cookies,
@@ -92,7 +90,6 @@ async def get_patient_operations(
 async def get_patient(
         patient_search: PatientSearch,
         cookies: dict[str, str] = Depends(set_cookies),
-        httpx_client: HTTPXClient = Depends(get_httpx_client)
 )-> List[Dict[str, Any]]:
     """
     Ищет госпитализации пациента по ФИО/дате рождения и возвращает список данных
@@ -127,7 +124,7 @@ async def get_patient(
     logger.debug(f"Поиск госпитализаций пациента с параметрами: {data}")
     # Выполняем первый запрос (поиск пациента/госпитализаций)
     # Ошибки здесь будут пойманы декоратором @route_handler
-    response = await httpx_client.fetch(
+    response = await HTTPXClient.fetch(
         url=url,
         method="POST",
         cookies=cookies,
@@ -161,7 +158,7 @@ async def get_patient(
 
         processed_count += 1
         # Вызываем функцию проверки операций (она сама обрабатывает свои ошибки и возвращает None при сбое)
-        operations_check_result = await get_patient_operations(cookies, httpx_client, event_id)
+        operations_check_result = await get_patient_operations(cookies, event_id)
 
         if operations_check_result is None:
             # Ошибка при проверке данной госпитализации
