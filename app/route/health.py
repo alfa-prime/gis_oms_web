@@ -16,5 +16,5 @@ def pong():
 async def test(httpx_client: HTTPXClient = Depends(get_httpx_client)):
     url = "https://mkb-10.com/script/seachc.php"
     data = {"scode": "I11.9"}
-    response = await httpx_client.fetch(url=url, metohd="POST", data=data)
+    response = await httpx_client.fetch(url=url, method="POST", data=data)
     return [response["text"]]
