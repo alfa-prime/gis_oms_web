@@ -3,9 +3,9 @@ from pathlib import Path as SyncPath
 
 import xmltodict
 from aiopath import Path as AsyncPath
-from fastapi import APIRouter, Query, HTTPException, status
+from fastapi import APIRouter, Query, HTTPException, status, Depends
 
-from app.core import HTTPXClient, logger, get_settings
+from app.core import HTTPXClient, logger, get_settings, get_http_service
 from app.services import save_file, is_zip_file, extract_zip_safely, save_handbook, delete_files
 
 router = APIRouter(prefix="/nsi_foms_handbooks", tags=["Справочники НСИ ФОМС"])
@@ -16,7 +16,7 @@ HANDBOOKS_DIR = SyncPath(settings.HANDBOOKS_DIR)
 TEMP_DIR = SyncPath(settings.TEMP_DIR)
 
 
-async def search_registry_by_code(code: str) -> dict:
+async def search_registry_by_code(code: str, http_service: HTTPXClient) -> dict:
     """Поиск справочника по коду"""
     url = f"{BASE_URL}/data"
     params = {
@@ -28,7 +28,7 @@ async def search_registry_by_code(code: str) -> dict:
         "sorting.d.code": "ASC",
     }
     try:
-        response = await HTTPXClient.fetch(url=url, method="GET", params=params)
+        response = await http_service.fetch(url=url, method="GET", params=params)
         result = response["json"].get("list", [])[0]
         registry_id, registry_version = result.get("providerParam", "").split("v")
         result = {"id": registry_id, "version": registry_version, "success": True}
@@ -55,13 +55,14 @@ async def xml_to_dict(file_path: SyncPath) -> dict:
 @router.get("/get_medical_organization_registry")
 async def get_medical_organization_registry(
         registry_code=Query(..., description="Код справочника", example="F030"),
+        http_service: HTTPXClient = Depends(get_http_service)
 ):
     """Получение справочника организаций"""
     url = f"{BASE_URL}/refbook"
     saved_file = "medical_organization_registry.zip"
     output_file = "medical_organization_registry.json"
     # Получаем параметры справочника
-    handbooks_params = await search_registry_by_code(registry_code)
+    handbooks_params = await search_registry_by_code(registry_code, http_service)
     if not handbooks_params["success"]:
         logger.error(f"Ошибка при получении параметров справочника: {handbooks_params['message']}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=handbooks_params["message"])
@@ -76,7 +77,7 @@ async def get_medical_organization_registry(
 
     try:
         # Выполняем запрос на скачивание файла
-        file_response = await HTTPXClient.fetch(url=url, method="GET", params=params)
+        file_response = await http_service.fetch(url=url, method="GET", params=params)
         if file_response["status_code"] != 200:
             logger.error(f"Ошибка при скачивании файла: статус {file_response['status_code']}")
             raise HTTPException(

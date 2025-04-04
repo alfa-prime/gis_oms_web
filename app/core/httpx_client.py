@@ -1,77 +1,31 @@
 import json
 from typing import Optional, Dict, Any
 
-import httpx
-from httpx import AsyncClient
+from fastapi import Request
+from httpx import AsyncClient, Response
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.core import logger, get_settings
 from app.core.decorators import log_and_catch
 
 settings = get_settings()
-# Глобальная настройка для включения отладочных логов
-DEBUG_HTTP = settings.DEBUG_HTTP
-
-
-async def get_httpx_client() -> AsyncClient:
-    """
-    Зависимость FastAPI для получения инициализированного HTTPX-клиента.
-
-    Возвращает:
-        AsyncClient: Готовый к использованию асинхронный HTTP-клиент.
-    """
-    return HTTPXClient.get_client()
 
 
 class HTTPXClient:
     """
-    Асинхронный HTTP-клиент с повторными попытками (retry).
-
-    **Использование:**
-
-    **GET-запрос**
-    ```python
-    response = await HTTPClient.fetch("https://example.com")
-    print(response["text"])  # Текст ответа
-    ```
-
-    **POST-запрос**
-    ```python
-    response = await HTTPClient.fetch("https://example.com/api", method="POST", data={"key": "value"})
-    print(response["json"])  # JSON-ответ
-    ```
-
-    **Возвращаемый словарь содержит:**
-      - `status_code` → Код ответа (int)
-      - `headers` → Заголовки (dict)
-      - `cookies` → Cookies (dict)
-      - `text` → Текст ответа (str)
-      - `json` → JSON-ответ (dict | None, если ответ не JSON)
+    Асинхронный HTTP-клиент-сервис с повторными попытками (retry) и логированием.
+    Использует базовый httpx.AsyncClient, который управляется через lifespan.
+    Предназначен для внедрения через FastAPI DI.
     """
 
-    _instance: Optional[httpx.AsyncClient] = None  # Единственный экземпляр клиента для всех запросов
+    def __init__(self, client: AsyncClient):
+        """
+        Инициализируется базовым httpx.AsyncClient.
+        Args:
+            client (AsyncClient): Экземпляр httpx.AsyncClient.
+        """
+        self.client = client  # Сохраняем базовый клиент
 
-    @classmethod
-    async def initialize(cls):
-        """Инициализация HTTP-клиента."""
-        if cls._instance is None:
-            cls._instance = httpx.AsyncClient(timeout=30.0, verify=False)
-
-    @classmethod
-    async def shutdown(cls):
-        """Закрытие HTTP-клиента."""
-        if cls._instance:
-            await cls._instance.aclose()
-            cls._instance = None
-
-    @classmethod
-    def get_client(cls) -> httpx.AsyncClient:
-        """Возвращает клиент, если он инициализирован, иначе ошибка."""
-        if cls._instance is None:
-            raise RuntimeError("HTTP-клиент не инициализирован. Вызовите initialize() перед использованием.")
-        return cls._instance
-
-    @classmethod
     @retry(
         stop=stop_after_attempt(5),
         wait=wait_exponential(multiplier=1, min=2, max=10),
@@ -81,7 +35,7 @@ class HTTPXClient:
     )
     @log_and_catch(debug=settings.DEBUG_HTTP)
     async def fetch(
-            cls,
+            self,  # Добавляем self
             url: str,
             method: str = "GET",
             headers: Optional[Dict[str, str]] = None,
@@ -89,12 +43,13 @@ class HTTPXClient:
             params: Optional[Dict[str, Any]] = None,
             data: Optional[Dict[str, Any]] | str = None,
             timeout: Optional[float] = None,
+            **kwargs  # Добавляем kwargs для возможной передачи доп. параметров в request
     ) -> Dict[str, Any]:
-        """Асинхронный HTTP-запрос с повторными попытками."""
-        # try:
-        client = cls.get_client()
-        request_timeout = timeout if timeout is not None else 30.0
-        response = await client.request(
+        """Асинхронный HTTP-запрос с повторными попытками и обработкой ответа."""
+        request_timeout = timeout if timeout is not None else 30.0  # Используем стандартный таймаут httpx, если не передан
+
+        # Используем self.client для выполнения запроса
+        response: Response = await self.client.request(
             method=method,
             url=url,
             params=params,
@@ -102,22 +57,44 @@ class HTTPXClient:
             headers=headers,
             cookies=cookies,
             timeout=request_timeout,
+            **kwargs
         )
 
         response.raise_for_status()  # Ошибка, если 4xx/5xx
 
         json_data = None
-        if "text/html" in response.headers.get("Content-Type", ""):
-            try:
-                json_data = json.loads(response.text)
-            except ValueError as e:
-                json_data = None  # Если не удалось декодировать JSON
+        content_type = response.headers.get("Content-Type", "").lower()  # Приводим к нижнему регистру для надежности
 
-        elif "application/json" in response.headers.get("Content-Type", ""):
+        if "application/json" in content_type:
             try:
-                json_data = response.json()
-            except ValueError as e:
-                json_data = None  # Если не удалось декодировать JSON
+                # response.json() используем ТОЛЬКО для application/json
+                if response.content:  # Проверяем, что есть что парсить
+                    json_data = response.json()
+                    logger.debug(f"Успешно распарсен JSON ответ для {url}")
+                else:
+                    logger.debug(f"Content-Type application/json, но тело ответа пустое для {url}")
+            except json.JSONDecodeError as e:  # Ловим ошибку парсинга JSON
+                logger.warning(
+                    f"Не удалось декодировать JSON из ответа {url} (Content-Type: {content_type}): {e}. Текст: {response.text[:200]}...")
+                json_data = None  # Оставляем None
+
+        elif "text/html" in content_type:
+            # Для text/html пробуем json.loads из УЖЕ ДЕКОДИРОВАННОГО текста
+            if response.text:  # Проверяем, что текст не пустой
+                try:
+                    json_data = json.loads(response.text)
+                    logger.debug(f"Успешно распарсен JSON из text/html ответа для {url}")
+                except json.JSONDecodeError:
+                    # Ошибки нет, просто это не JSON, замаскированный под HTML
+                    logger.debug(f"Content-Type text/html для {url}, но тело не является JSON.")
+                    json_data = None
+            else:
+                logger.debug(f"Content-Type text/html для {url}, но тело ответа пустое.")
+                json_data = None
+        else:
+            # Для всех остальных типов (XML, text/plain и др.) не пытаемся парсить JSON
+            logger.debug(f"Content-Type '{content_type}' для {url}. JSON парсинг не выполняется.")
+            json_data = None
 
         return dict(
             status_code=response.status_code,
@@ -126,5 +103,19 @@ class HTTPXClient:
             content=response.content,
             text=response.text,
             json=json_data
-
         )
+
+
+async def get_http_service(request: Request) -> HTTPXClient:
+    """
+    Зависимость FastAPI для получения экземпляра сервиса HTTPXClient.
+    Использует базовый клиент, хранящийся в app.state.
+    """
+    # Достаем базовый клиент из app.state, который был создан в lifespan
+    base_client: Optional[AsyncClient] = getattr(request.app.state, "http_client", None)
+    if base_client is None:
+        # Это не должно произойти, если lifespan настроен правильно
+        logger.critical("Базовый HTTPX клиент не найден в app.state!")
+        raise RuntimeError("Базовый HTTPX клиент не был инициализирован.")
+    # Создаем и возвращаем экземпляр нашего сервиса HTTPXClient
+    return HTTPXClient(client=base_client)

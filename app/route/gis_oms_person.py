@@ -3,7 +3,8 @@ from typing import List, Dict, Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.core import get_settings, HTTPXClient, logger
+from app.core import get_settings, HTTPXClient, logger, get_http_service
+from app.core.decorators import route_handler
 from app.models import PatientSearch
 from app.services import set_cookies
 
@@ -20,6 +21,7 @@ router = APIRouter(prefix="/evmias-oms", tags=["Сбор данных о пац�
 
 async def get_patient_operations(
         cookies: dict[str, str],
+        http_service: HTTPXClient,
         event_id: str | None
 ) -> Optional[List[Dict[str, Any]]]:
     """
@@ -34,7 +36,6 @@ async def get_patient_operations(
         logger.warning("Попытка получить операции без event_id")
         return None
 
-
     logger.debug(f"Запрос операций пациента {event_id} начат")
     url = BASE_URL
     headers = HEADERS
@@ -42,7 +43,7 @@ async def get_patient_operations(
     data = {"pid": event_id, "parent": "EvnPS"}
 
     try:
-        response = await HTTPXClient.fetch(
+        response = await http_service.fetch(
             url=url,
             method="POST",
             cookies=cookies,
@@ -75,14 +76,6 @@ async def get_patient_operations(
         # Ловим любые другие неожиданные ошибки (ошибки парсинга, сети и т.д.)
         logger.error(f"Неожиданная ошибка при получении услуг для event_id={event_id}: {e}", exc_info=True)
         return None
-    # result = []
-    # event_data = response.get("json")
-    # if event_data and isinstance(event_data, list):
-    #     for entry in event_data:
-    #         if "EvnUslugaOper" not in entry["EvnClass_SysNick"]:
-    #             continue
-    #         result.append(entry)
-    #     return result
 
 
 @router.post("/get_patient")
@@ -90,7 +83,8 @@ async def get_patient_operations(
 async def get_patient(
         patient_search: PatientSearch,
         cookies: dict[str, str] = Depends(set_cookies),
-)-> List[Dict[str, Any]]:
+        http_service: HTTPXClient = Depends(get_http_service)
+) -> List[Dict[str, Any]]:
     """
     Ищет госпитализации пациента по ФИО/дате рождения и возвращает список данных
     ТОЛЬКО тех госпитализаций, в которых подтверждено наличие операций.
@@ -114,17 +108,10 @@ async def get_patient(
         **({"Person_Birthday": birthday} if (birthday := patient_search.birthday) else {}),
     }
 
-    # if patient_search.first_name:
-    #     data["Person_Firname"] = patient_search.first_name
-    # if patient_search.middle_name:
-    #     data["Person_Secname"] = patient_search.middle_name
-    # if patient_search.birthday:
-    #     data["Person_Birthday"] = patient_search.birthday
-
     logger.debug(f"Поиск госпитализаций пациента с параметрами: {data}")
     # Выполняем первый запрос (поиск пациента/госпитализаций)
     # Ошибки здесь будут пойманы декоратором @route_handler
-    response = await HTTPXClient.fetch(
+    response = await http_service.fetch(
         url=url,
         method="POST",
         cookies=cookies,
@@ -158,7 +145,7 @@ async def get_patient(
 
         processed_count += 1
         # Вызываем функцию проверки операций (она сама обрабатывает свои ошибки и возвращает None при сбое)
-        operations_check_result = await get_patient_operations(cookies, event_id)
+        operations_check_result = await get_patient_operations(cookies, http_service, event_id)
 
         if operations_check_result is None:
             # Ошибка при проверке данной госпитализации
@@ -186,22 +173,3 @@ async def get_patient(
 
     # 3. Возвращаем отфильтрованный список госпитализаций
     return final_hospitalization_list
-
-    # data_raw = response["json"].get("data", [])
-    #
-    # result = dict()
-    #
-    # for entry in data_raw:
-    #     event_id = entry.get("EvnPS_id", "")
-    #     event_data = await get_patient_operations(cookies, httpx_client, event_id)
-    #     result[event_id] = {
-    #         "data": entry,
-    #         "operations": event_data,
-    #     }
-    #
-    # if not result:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_404_NOT_FOUND,
-    #         detail="Пациент не найден"
-    #     )
-    # return result

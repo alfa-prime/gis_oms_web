@@ -1,6 +1,6 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
-from app.core import get_settings, HTTPXClient
+from app.core import get_settings, HTTPXClient, get_http_service
 
 settings = get_settings()
 
@@ -13,8 +13,8 @@ def pong():
 
 
 @router.get("/httpx-client-test")
-async def test():
+async def test(http_service: HTTPXClient = Depends(get_http_service)):
     url = "https://mkb-10.com/script/seachc.php"
     data = {"scode": "I11.9"}
-    response = await HTTPXClient.fetch(url=url, method="POST", data=data)
+    response = await http_service.fetch(url=url, method="POST", data=data)
     return [response["text"]]

@@ -1,8 +1,9 @@
 from contextlib import asynccontextmanager
-
+import httpx
 from fastapi import FastAPI
 
-from app.core import HTTPXClient, logger, load_handbook, handbooks_storage
+from app.core import logger, load_handbook, handbooks_storage
+# from app.core import HTTPXClient, logger, load_handbook, handbooks_storage
 from app.route import router as api_router
 
 
@@ -10,11 +11,17 @@ from app.route import router as api_router
 async def lifespan(app: FastAPI):  # noqa
     """
     Управление жизненным циклом приложения:
-    - Асинхронная инициализация HTTPXClient и справочников при старте
-    - Закрытие HTTPXClient при завершении
+    - Создание и закрытие базового HTTPX клиента.
+    - Загрузка справочников.
     """
-    await HTTPXClient.initialize()  # Запускаем клиент
-    logger.info("HTTPXClient инициализирован")
+    # Создаем базовый httpx.AsyncClient
+    base_client = httpx.AsyncClient(timeout=30.0, verify=False)
+    # Сохраняем его в app.state, чтобы зависимости могли его получить
+    app.state.http_client = base_client
+    logger.info("Базовый HTTPX клиент инициализирован и сохранен в app.state")
+
+    # await HTTPXClient.initialize()  # Запускаем клиент
+    # logger.info("HTTPXClient инициализирован")
 
     # Загружаем справочники из файлов
     handbooks_storage.handbooks = {}
@@ -38,8 +45,12 @@ async def lifespan(app: FastAPI):  # noqa
         logger.error("Ни один справочник не загружен")
 
     yield  # Приложение работает
-    await HTTPXClient.shutdown()  # Закрываем клиент при завершении работы
-    logger.info("HTTPXClient закрыт")
+
+    # Закрываем базовый клиент при завершении работы
+    await app.state.http_client.aclose()
+    logger.info("Базовый HTTPX клиент закрыт")
+    # await HTTPXClient.shutdown()  # Закрываем клиент при завершении работы
+    # logger.info("HTTPXClient закрыт")
 
 
 tags_metadata = [

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.services import set_cookies, save_handbook
-from app.core import logger, HTTPXClient, get_settings
+from app.core import logger, HTTPXClient, get_settings, get_http_service
 
 settings = get_settings()
 
@@ -22,6 +22,7 @@ router = APIRouter(prefix="/evmias_handbooks", tags=["Справочники Е�
 @router.get("/referred_by")
 async def get_referred_by_handbook(
         cookies: dict = Depends(set_cookies),
+        http_service: HTTPXClient = Depends(get_http_service)
 ):
     """Получаем справочник с типами кто направил пациента (другая МО и прочее)"""
     try:
@@ -41,7 +42,7 @@ async def get_referred_by_handbook(
             "object": "SFPrehospDirect"  # noqau
         }
 
-        response = await HTTPXClient.fetch(
+        response = await http_service.fetch(
             url=url,
             method="POST",
             cookies=cookies,
@@ -75,6 +76,7 @@ async def get_referred_by_handbook(
 @router.get("/lpu_departments")
 async def get_lpu_departments_handbook(
         cookies: dict = Depends(set_cookies),
+        http_service: HTTPXClient = Depends(get_http_service),
 ):
     """Получаем справочник отделений МО"""
     try:
@@ -85,7 +87,7 @@ async def get_lpu_departments_handbook(
         data = {
             "Lpu_id": LPU_ID,
         }
-        response = await HTTPXClient.fetch(
+        response = await http_service.fetch(
             url=url,
             method="POST",
             cookies=cookies,
@@ -112,6 +114,7 @@ async def get_lpu_departments_handbook(
 @router.get("/referred_organizations")
 async def get_referred_organizations_handbook(
         cookies: dict = Depends(set_cookies),
+        http_service: HTTPXClient = Depends(get_http_service),
 ):
     """Получаем справочник организаций, которые направляли пациента"""
     try:
@@ -130,7 +133,7 @@ async def get_referred_organizations_handbook(
             "needOrgType": "1",
             "closedOrgs": "0",
         }
-        response = await HTTPXClient.fetch(
+        response = await http_service.fetch(
             url=url,
             method="POST",
             cookies=cookies,

@@ -2,10 +2,10 @@ import json
 import aiofiles
 from aiopath import AsyncPath
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Depends
 from httpx import HTTPStatusError, TimeoutException
 
-from app.core import get_settings, HTTPXClient, logger
+from app.core import get_settings, HTTPXClient, get_http_service, logger
 
 settings = get_settings()
 
@@ -35,21 +35,22 @@ async def read_cookies_file() -> dict:
         return {}
 
 
-async def fetch_initial_cookies() -> dict:
+async def fetch_initial_cookies(http_service: HTTPXClient) -> dict:
     """Получает первую часть cookies от внешнего сервиса.
        Returns:
            dict: Словарь с начальными cookies или пустой словарь, если их нет в ответе.
    """
     params = {"c": "portal", "m": "promed", "from": "promed"}
-    response = await HTTPXClient.fetch(url=BASE_URL, method="GET", params=params)
+    response = await http_service.fetch(url=BASE_URL, method="GET", params=params)
     logger.info("Первая часть cookies получена успешно")
     return response.get('cookies', {})
 
 
-async def authorize(cookies: dict) -> dict:
+async def authorize(cookies: dict, http_service: HTTPXClient) -> dict:
     """Авторизует пользователя на внешнем сервисе и добавляет логин в cookies.
     Args:
         cookies (dict): Начальные cookies, полученные от fetch_initial_cookies.
+        http_service (HTTPXClient): Клиент HTTPX для выполнения запросов.
     Returns:
         dict: Обновленные cookies с добавленным логином.
     Raises:
@@ -58,7 +59,7 @@ async def authorize(cookies: dict) -> dict:
     params = {"c": "main", "m": "index", "method": "Logon"}
     # Данные для авторизации
     data = {"login": settings.EVMIAS_LOGIN, "psw": settings.EVMIAS_PASSWORD}
-    response = await HTTPXClient.fetch(url=BASE_URL, method="POST", cookies=cookies, params=params, data=data)
+    response = await http_service.fetch(url=BASE_URL, method="POST", cookies=cookies, params=params, data=data)
 
     # Проверка успешности авторизации
     if response["status_code"] != 200 or "true" not in response["text"]:
@@ -70,10 +71,11 @@ async def authorize(cookies: dict) -> dict:
     return cookies
 
 
-async def fetch_final_cookies(cookies: dict) -> dict:
+async def fetch_final_cookies(cookies: dict, http_service: HTTPXClient) -> dict:
     """Получает финальную часть cookies через POST-запрос к сервлету.
     Args:
         cookies (dict): Cookies после авторизации.
+        http_service (HTTPXClient): Клиент HTTPX для выполнения запросов.
     Returns:
         dict: Обновленные cookies с финальными данными.
     Raises:
@@ -87,7 +89,7 @@ async def fetch_final_cookies(cookies: dict) -> dict:
     }
     # Секретные данные для запроса
     data = settings.EVMIAS_SECRET
-    response = await HTTPXClient.fetch(url=url, method="POST", headers=headers, cookies=cookies, data=data)
+    response = await http_service.fetch(url=url, method="POST", headers=headers, cookies=cookies, data=data)
 
     # Проверка успешности запроса
     if response["status_code"] != 200:
@@ -100,7 +102,7 @@ async def fetch_final_cookies(cookies: dict) -> dict:
     return cookies
 
 
-async def get_new():
+async def get_new(http_service: HTTPXClient):
     """Получает новые cookies через последовательные запросы и сохраняет их в файл.
        Returns:
            dict: Новые cookies.
@@ -109,9 +111,9 @@ async def get_new():
        """
     try:
         # Последовательное получение cookies
-        cookies = await fetch_initial_cookies()
-        cookies = await authorize(cookies)
-        cookies = await fetch_final_cookies(cookies)
+        cookies = await fetch_initial_cookies(http_service)
+        cookies = await authorize(cookies, http_service)
+        cookies = await fetch_final_cookies(cookies, http_service)
 
         # Сохранение cookies в файл
         logger.info(f"Сохранение cookies в файл {COOKIES_FILE}")
@@ -138,7 +140,7 @@ async def get_new():
         raise HTTPException(status_code=500, detail="Неожиданная ошибка при получении cookies")
 
 
-async def check_existing() -> bool:
+async def check_existing(http_service: HTTPXClient) -> bool:
     """Проверяет, действительны ли существующие cookies.
         Returns:
             bool: True, если cookies валидны, иначе False.
@@ -151,7 +153,7 @@ async def check_existing() -> bool:
     data = {"is_activerules": "true"}
 
     try:
-        response = await HTTPXClient.fetch(url=BASE_URL, method="POST", params=params, cookies=cookies, data=data)
+        response = await http_service.fetch(url=BASE_URL, method="POST", params=params, cookies=cookies, data=data)
         # Проверка: если статус 200 и есть JSON-ответ, cookies считаются валидными
         if response["status_code"] == 200 and response["json"]:
             logger.info("Сookies действительны")
@@ -171,7 +173,7 @@ async def load_cookies() -> dict:
     return await read_cookies_file()
 
 
-async def set_cookies() -> dict:
+async def set_cookies(http_service: HTTPXClient = Depends(get_http_service)) -> dict:
     """Устанавливает cookies: использует существующие, если они валидны, иначе получает новые.
     Returns:
         dict: Действующие cookies.
@@ -179,15 +181,15 @@ async def set_cookies() -> dict:
         HTTPException: Если произошла ошибка при получении или проверке cookies.
     """
     try:
-        if await check_existing():
+        if await check_existing(http_service):
             logger.info("Текущие cookies действительны")
             cookies = await load_cookies()
             if not cookies:
                 logger.error("Текущие cookies недействительны, получаем новые.")
-                cookies = await get_new()
+                cookies = await get_new(http_service)
         else:
             logger.info("Текущие cookies недействительны, получаем новые.")
-            cookies = await get_new()
+            cookies = await get_new(http_service)
 
         return cookies
     except HTTPException as e:
