@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Поиск пациента (Простой)</title>
+    <!-- Подключаем наш внешний CSS файл -->
+    <!-- Функция url_for генерирует правильный путь к статике -->
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Поиск пациента</h1>
+
+        <!-- Обычная HTML форма -->
+        <!-- action - URL нашего эндпоинта для обработки, method="POST" -->
+        <form action="/api/find_events" method="POST"> <!-- Убедись, что action="/find_events" соответствует твоему роуту -->
+            <div>
+                <label for="last_name">Фамилия *</label>
+                <!-- Атрибут name важен для FastAPI, чтобы получить данные -->
+                <input type="text" id="last_name" name="last_name" required>
+            </div>
+            <div>
+                <label for="first_name">Имя</label>
+                <input type="text" id="first_name" name="first_name">
+            </div>
+            <div>
+                <label for="middle_name">Отчество</label>
+                <input type="text" id="middle_name" name="middle_name">
+            </div>
+             <div>
+                <label for="birthday">Дата рождения (ДД.ММ.ГГГГ)</label>
+                <input type="text" id="birthday" name="birthday" pattern="\d{2}\.\d{2}\.\d{4}" placeholder="01.01.1970">
+             </div>
+
+            <button type="submit">Найти</button>
+        </form>
+
+        <!-- Блок для отображения результата -->
+        <!-- Показывается только если переменная 'results' передана в шаблон -->
+        {% if results is defined and results is not none %} <!-- Проверяем что results есть и не None -->
+        <div class="results">
+            <h2>Результат:</h2>
+            <!-- Выводим результат как форматированный JSON -->
+            <!-- Фильтр |tojson(indent=2) требует установки Jinja (обычно идет с FastAPI) -->
+            <pre>{{ results | tojson(indent=2) }}</pre>
+        </div>
+        {% endif %}
+
+        <!-- Блок для отображения ошибки -->
+        <!-- Показывается только если переменная 'error' передана и не пуста -->
+        {% if error is defined and error %}
+         <div class="error-message"> <!-- Используем класс из CSS -->
+            <h2>Ошибка:</h2>
+            <p>{{ error }}</p>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

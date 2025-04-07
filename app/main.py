@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 import httpx
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from app.core import logger, load_handbook, handbooks_storage
 # from app.core import HTTPXClient, logger, load_handbook, handbooks_storage
@@ -63,6 +64,9 @@ app = FastAPI(
     description="Medical Extractor",
     lifespan=lifespan
 )
+
+# Монтируем статику ДО подключения роутеров
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Подключаем маршруты API
 app.include_router(api_router)

@@ -19,7 +19,7 @@ class PatientSearch(BaseModel):
         description = "Отчество пациента",
         examples = ["Константинович"],
     )
-    birthday: constr(pattern=r"\d{2}\.\d{2}\.\d{4}") = Field(
+    birthday: Optional[constr(pattern=r"\d{2}\.\d{2}\.\d{4}")] = Field(
         None,
         description="Дата рождения в формате DD.MM.YYYY",
         examples=["04.02.1961"]

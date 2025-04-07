@@ -1,0 +1,117 @@
+/* static/css/style.css */
+.container {
+    width: 66.666%; /* Задаем ширину примерно 2/3 */
+    max-width: 960px; /* Опционально: Ограничим максимальную ширину на больших экранах */
+    margin-left: auto;  /* Автоматический отступ слева */
+    margin-right: auto; /* Автоматический отступ справа */
+    /* Эти два margin сделают блок центрированным по горизонтали */
+
+    /* Добавим стили, которые раньше могли быть у body, для контейнера */
+    background-color: #ffffff; /* Белый фон для контейнера */
+    padding: 30px; /* Внутренние отступы для контейнера */
+    border-radius: 8px; /* Скругление углов */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Тень для выделения */
+}
+
+
+
+body {
+    font-family: sans-serif;
+    /* padding: 20px; Убираем или уменьшаем паддинг у body */
+    background-color: #f8f9fa; /* Фон страницы */
+    padding-top: 20px; /* Оставляем отступы сверху/снизу для body */
+    padding-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+    .container {
+        width: 95%; /* Почти на всю ширину */
+        padding: 20px; /* Уменьшаем отступы */
+        max-width: none; /* Сбрасываем максимальную ширину */
+    }
+}
+
+
+h1 {
+    margin-bottom: 20px;
+    color: #333;
+}
+
+form div {
+    margin-bottom: 15px; /* Отступ для каждого блока в форме */
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+}
+
+input[type="text"] {
+    width: 100%;
+    padding: 10px; /* Чуть больше padding */
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+    border-radius: 4px; /* Небольшое скругление */
+}
+
+input[type="text"]:focus {
+  border-color: #007bff; /* Подсветка при фокусе */
+  outline: none; /* Убираем стандартный outline */
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25); /* Добавляем свою подсветку */
+}
+
+
+button {
+    padding: 10px 15px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 1rem; /* Явно зададим размер шрифта */
+    transition: background-color 0.2s ease-in-out; /* Плавный переход для hover */
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+.results {
+    margin-top: 30px; /* Больше отступ сверху */
+    border-top: 1px solid #eee;
+    padding-top: 20px;
+}
+
+.results h2 {
+   margin-bottom: 15px;
+   color: #333;
+}
+
+pre {
+    background-color: #e9ecef; /* Чуть темнее фон для pre */
+    padding: 15px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 400px; /* Ограничим высоту, добавим скролл */
+    overflow-y: auto;  /* Добавляем вертикальный скролл */
+}
+
+/* Стили для ошибки */
+ .error-message {
+    color: #dc3545; /* Красный цвет для ошибок */
+    background-color: #f8d7da; /* Светло-красный фон */
+    border: 1px solid #f5c6cb; /* Красная рамка */
+    padding: 15px;
+    border-radius: 4px;
+    margin-top: 20px;
+}
+
+.error-message h2 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #721c24; /* Темно-красный для заголовка ошибки */
+}
