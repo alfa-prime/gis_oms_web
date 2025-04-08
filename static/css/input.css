@@ -1,0 +1,58 @@
+/* static/css/input.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Свои кастомные стили можешь добавлять ниже */
+
+.container {
+    width: 66.666%; /* 2/3 ширины */
+    max-width: 960px; /* Опционально */
+    margin-left: auto;
+    margin-right: auto; /* Центрирование */
+    background-color: #ffffff; /* Фон */
+    padding: 1.5rem; /* Отступы (примерно p-6 Tailwind) */
+    border-radius: 0.5rem; /* Скругление (rounded-lg) */
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); /* Тень (shadow-md) */
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .container {
+        width: 95%;
+        padding: 1rem; /* p-4 */
+    }
+}
+
+
+/* стилизация метки обязательного поля */
+label:has(+ input[required])::after { /* Выбираем label, если СЛЕДУЮЩИЙ элемент - input с required */
+    content: " *"; /* Добавляем звездочку через CSS */
+    color: red;
+    font-weight: bold;
+    margin-left: 2px;
+}
+
+/* Подсвечиваем НЕВАЛИДНОЕ ОБЯЗАТЕЛЬНОЕ поле КРАСНЫМ,
+   только если форма была отправлена (имеет класс .submitted) */
+.submitted input[required]:invalid {
+    border-color: #dc3545 !important; /* Красный цвет рамки (бутстраповский danger). !important на всякий случай */
+    background-color: rgba(220, 53, 69, 0.1) !important; /* Полупрозрачный красный фон (RGBA) */
+    /* Убираем стандартную тень фокуса, если она мешает */
+    box-shadow: none !important;
+}
+
+/* Можно добавить стиль для невалидного поля ДР, если оно непустое */
+.submitted input#birthday:not(:placeholder-shown):invalid {
+     border-color: #dc3545;
+     background-color: #f8d7da;
+}
+
+/* Стили для правильного фокуса, чтобы он перебивал ошибку */
+input[type="text"]:focus {
+  border-color: #007bff !important; /* !important может понадобиться */
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25) !important;
+  background-color: #ffffff !important; /* Убираем красный фон при фокусе */
+}
+

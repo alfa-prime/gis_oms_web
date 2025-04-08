@@ -5,7 +5,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core import logger, load_handbook, handbooks_storage
 # from app.core import HTTPXClient, logger, load_handbook, handbooks_storage
-from app.route import router as api_router
+from app.route import api_router, web_router
 
 
 @asynccontextmanager
@@ -70,3 +70,4 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Подключаем маршруты API
 app.include_router(api_router)
+app.include_router(web_router)
