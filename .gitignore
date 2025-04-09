@@ -21,7 +21,7 @@ yarn-error.log*
 *~
 
 # Build artifacts
-/static/css/tailwind.css
+#/static/css/tailwind.css
 /static/dist/
 build/
 dist/

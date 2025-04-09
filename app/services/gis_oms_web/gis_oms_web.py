@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 from fastapi import HTTPException, status
@@ -165,4 +166,5 @@ async def fetch_and_filter(
         )
 
     # 3. Возвращаем отфильтрованный список госпитализаций
+    logger.debug(print(json.dumps(final_hospitalization_list, indent=4, ensure_ascii=False)))
     return final_hospitalization_list
