@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Medical Extractor{% endblock %}</title> {# <-- Блок для заголовка страницы #}
+
+    <!-- 1. Подключаем СГЕНЕРИРОВАННЫЙ Tailwind CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/tailwind.css') }}">
+
+    <!-- 2. Подключаем alpinejs через Import Map (базовый скрипт) -->
+    <script type="importmap">
+    {
+      "imports": {
+        "alpinejs": "{{ url_for('static', path='/js/vendor/alpine.esm.js') }}"
+      }
+    }
+    </script>
+
+    <!-- Стиль для скрытия элементов до инициализации Alpine -->
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+
+    {# <-- Блок для дополнительных стилей/скриптов в head, если нужны на конкретной странице #}
+    {% block head_extra %}{% endblock %}
+</head>
+
+<body class="bg-gray-100 p-4 md:p-8">
+
+    {# <-- Основной блок для контента страницы, будет заполнен дочерним шаблоном #}
+    {% block content %}{% endblock %}
+
+    {# <-- Блок для скриптов в конце body (на всякий случай) #}
+    {% block scripts_body_end %}{% endblock %}
+
+</body>
+
+</html>

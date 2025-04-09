@@ -1,0 +1,36 @@
+<form @submit.prevent="searchPatient" :class="{ 'submitted': formSubmitted }">
+    <div class="mb-4">
+        <label for="last_name" class="block text-sm font-medium text-gray-700 mb-1">Фамилия</label>
+        <input type="search" id="last_name" x-model="formData.last_name" required autocomplete="off"
+               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
+            <label for="first_name" class="block text-sm font-medium text-gray-700 mb-1">Имя</label>
+            <input type="search" id="first_name" x-model="formData.first_name" autocomplete="off"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+        </div>
+        <div>
+            <label for="middle_name" class="block text-sm font-medium text-gray-700 mb-1">Отчество</label>
+            <input type="search" id="middle_name" x-model="formData.middle_name" autocomplete="off"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+        </div>
+    </div>
+    <div class="mb-4">
+        <label for="birthday" class="block text-sm font-medium text-gray-700 mb-1">Дата рождения (ДД.ММ.ГГГГ)</label>
+        <input type="search" id="birthday" x-model="formData.birthday" pattern="\d{2}\.\d{2}\.\d{4}" placeholder="01.01.1970" autocomplete="off"
+               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+    </div>
+
+    <button type="submit" :disabled="loading"
+            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:shadow-outline disabled:opacity-50 transition duration-150 ease-in-out">
+        <span x-show="!loading">Найти</span>
+        <span x-show="loading" class="inline-flex items-center">
+            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Поиск...
+        </span>
+    </button>
+</form>

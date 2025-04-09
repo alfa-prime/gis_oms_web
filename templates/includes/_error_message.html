@@ -1,0 +1,9 @@
+<div x-show="error" x-transition
+     class="mt-4 text-sm p-3 rounded-md"
+     :class="{
+         'bg-yellow-100 border border-yellow-300 text-yellow-800': error === 'В ЕВМИАС не найдено записей с указанными параметрами.',
+         'bg-red-100 border border-red-300 text-red-700': error && error !== 'В ЕВМИАС не найдено записей с указанными параметрами.'
+     }">
+    {# ^ Условие :class стало чуть сложнее, чтобы корректно обрабатывать оба типа сообщений #}
+    <span x-text="error"></span>
+</div>
