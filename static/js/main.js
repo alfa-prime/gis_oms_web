@@ -115,10 +115,21 @@ document.addEventListener('alpine:init', () => {
             console.log("Search finished");
         },
 
-        selectEvent(eventId) {
-            console.log('Выбрана госпитализация с ID:', eventId);
-            this.showResultsModal = false;
-            alert(`Выбрана госпитализация с ID: ${eventId}. Следующий шаг: загрузка деталей.`);
+        selectEvent(selectedEvent) {
+            // Извлекаем нужные данные
+            const eventId = selectedEvent.EvnPS_id;
+            const patientId = selectedEvent.Person_id; // Получаем ID пациента
+            const cardNumber = selectedEvent.EvnPS_NumCard; // Получаем номер карты
+
+             console.log('Выбрана госпитализация:', { // Логируем объект для удобства
+                eventId: eventId,
+                patientId: patientId,
+                cardNumber: cardNumber
+            });
+            this.showResultsModal = false; // Закрываем модалку
+
+            alert(`Выбрана госпитализация ID: ${eventId}\nдля пациента ID: ${patientId}\nкарта №: ${cardNumber}\n
+            Следующий шаг: загрузка деталей.`);
             // TODO: Реализовать загрузку деталей
         }
     }));
