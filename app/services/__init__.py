@@ -7,4 +7,5 @@ from .tools.tools import (
     extract_zip_safely,
     save_handbook
 )
-from .gis_oms_web.gis_oms_web import fetch_and_filter
+from .gis_oms.gis_oms import fetch_and_filter
+from .gis_oms.collect_event_data import collect_event_data

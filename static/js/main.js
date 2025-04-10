@@ -42,16 +42,39 @@ document.addEventListener('alpine:init', () => {
 
          // --- Методы-обертки Alpine ---
 
-        // Основной метод, запускаемый из формы
+         // Метод init вызывается при инициализации компонента Alpine
+        init() {
+            console.log('Patient Search component initialized');
+            const dobInput = document.getElementById('dob-input');
+            if (dobInput) {
+                flatpickr(dobInput, {
+                    // dateFormat: "d.m.Y", // Стандартный российский формат для отображения
+                    locale: "ru",         // Включаем русскую локализацию (требует подключения скрипта локали)
+                    allowInput: true,     // Разрешить ручной ввод даты
+                    altInput: true,       // Показать удобный для пользователя формат (altFormat)
+                    altFormat: "d.m.Y",   // Формат для пользователя (ДД.ММ.ГГГГ)
+                    dateFormat: "d.m.Y",  // Формат, который будет в value инпута и в модели Alpine (ГГГГ-ММ-ДД)
+                                          // Этот формат обычно удобнее для отправки в API
+                    onChange: (selectedDates, dateStr, instance) => {
+                        // Принудительно обновляем модель Alpine, используя dateStr в формате 'dateFormat' (Y-m-d)
+                        this.formData.birthday = dateStr;
+                        console.log("Flatpickr date selected:", this.formData.birthday);
+                    },
+                });
+                console.log('Flatpickr initialized for #dob-input');
+            } else {
+                console.error('#dob-input element not found for Flatpickr');
+            }
+        },
+
+        // Метод для обработки отправки формы
         async searchPatient() { // Делаем его async, т.к. он ждет performSearchRequest
             console.log("searchPatient called");
-            console.log('Before this.formSubmitted');
             this.formSubmitted = true;
             this.loading = true;
             this.error = null;
             this.results = null;
             this.showResultsModal = false;
-            console.log('After this.showResultsModal');
 
             // 1. Валидация
             console.log('Setting formSubmitted to true');
@@ -64,6 +87,7 @@ document.addEventListener('alpine:init', () => {
 
             // 2. Подготовка данных
             const payload = prepareSearchPayload(this.formData);
+            console.log("Payload for API:", JSON.stringify(payload));
 
             // 3. Выполнение запроса (вызываем нашу отдельную async функцию)
             const response = await performSearchRequest(payload);

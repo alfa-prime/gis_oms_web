@@ -1,7 +1,7 @@
 <form @submit.prevent="searchPatient" :class="{ 'submitted': formSubmitted }">
     <div class="mb-4">
         <label for="last_name" class="block text-sm font-medium text-gray-700 mb-1">Фамилия</label>
-        <input type="search" id="last_name" x-model="formData.last_name" required autocomplete="off"
+        <input type="search" id="last_name" x-model="formData.last_name" placeholder="обязательно для заполнения" required autocomplete="off"
                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -17,8 +17,8 @@
         </div>
     </div>
     <div class="mb-4">
-        <label for="birthday" class="block text-sm font-medium text-gray-700 mb-1">Дата рождения (ДД.ММ.ГГГГ)</label>
-        <input type="search" id="birthday" x-model="formData.birthday" pattern="\d{2}\.\d{2}\.\d{4}" placeholder="01.01.1970" autocomplete="off"
+        <label for="dob-input" class="block text-sm font-medium text-gray-700 mb-1">Дата рождения (ДД.ММ.ГГГГ)</label>
+        <input type="text" id="dob-input" x-model="formData.birthday" pattern="\d{2}\.\d{2}\.\d{4}" placeholder="01.01.1970" autocomplete="off"
                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
     </div>
 

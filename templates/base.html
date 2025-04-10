@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Medical Extractor{% endblock %}</title> {# <-- Блок для заголовка страницы #}
-
+    <!-- Подключаем flatpickr CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <!-- 1. Подключаем СГЕНЕРИРОВАННЫЙ Tailwind CSS -->
     <link rel="stylesheet" href="{{ url_for('static', path='/css/tailwind.css') }}">
 
@@ -33,7 +34,12 @@
     {% block content %}{% endblock %}
 
     {# <-- Блок для скриптов в конце body (на всякий случай) #}
-    {% block scripts_body_end %}{% endblock %}
+    {% block scripts_body_end %}
+        <!-- Сначала подключаем саму библиотеку Flatpickr -->
+        <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+        <!-- Затем, если нужна, локализация (она модифицирует глобальный объект Flatpickr) -->
+        <script src="https://npmcdn.com/flatpickr/dist/l10n/ru.js"></script>
+    {% endblock %}
 
 </body>
 

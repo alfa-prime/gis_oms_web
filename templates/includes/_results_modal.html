@@ -24,12 +24,13 @@
                         @click="selectEvent(event.EvnPS_id)">
                         <div class="text-sm">
                             <p class="font-medium text-gray-900">
-                                <span x-text="`${event.Person_Surname} ${event.Person_Firname} ${event.Person_Secname || ''}`.trim()"></span>
-                                <span class="mx-1 text-gray-400">|</span>
-                                <span x-text="event.Person_Birthday"></span>
-                                <span class="mx-1 text-gray-400">|</span>
-                                <span class="text-gray-600">№</span>
-                                <span x-text="event.EvnPS_NumCard" class="text-red-600 font-semibold"></span>
+                                <span x-text="`🧍‍♂️ ${event.Person_Surname} ${event.Person_Firname} ${event.Person_Secname || ''}`.trim()"></span>
+                                <br>
+                                <span class="text-gray-600">📅 Дата рождения: </span>
+                                <span x-text="event.Person_Birthday" class="text-red-400 font-semibold"></span>
+                                <br>
+                                <span class="text-gray-600">🗂️ Карта №: </span>
+                                <span x-text="event.EvnPS_NumCard" class="text-red-400 font-semibold"></span>
                             </p>
                         </div>
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-hover:text-indigo-600 transition duration-150 ease-in-out" fill="none" viewBox="0 0 24 24" stroke="currentColor">
