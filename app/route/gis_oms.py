@@ -2,7 +2,7 @@ from typing import List, Dict, Any
 
 from fastapi import APIRouter, Depends, Path
 
-from app.core import get_settings, HTTPXClient, get_http_service
+from app.core import get_settings, HTTPXClient, get_http_service, logger
 from app.core.decorators import route_handler
 from app.models import PatientSearch
 from app.services import set_cookies, fetch_and_filter, collect_event_data
@@ -42,18 +42,18 @@ async def get_patient(
         502: {"description": "Ошибка при получении данных от внешней системы (ЕВМИАС)"},
     }
 )
-async def get_event(
+async def get_event_details_by_card(
         card_number: str = Path(..., description="номер карты пациента"),
         cookies: dict[str, str] = Depends(set_cookies),
         http_service: HTTPXClient = Depends(get_http_service)
 ):
     """
-    Сбор всех данных о госпитализации с id {event_id}
-    :param card_number:
-    :param cookies:
-    :param http_service:
-    :return:
+    Сбор стартовых данных о госпитализации с номером карты {card_number}.
+    Пока возвращает только базовую информацию, полученную при поиске по номеру карты.
     """
+    logger.info(f"Запрос деталей для карты № {card_number}")
+    # Вызываем сервис. Он вернет словарь или выбросит исключение.
+    # Исключения будут пойманы декоратором @route_handler.
     result = await collect_event_data(
         cookies=cookies,
         http_service=http_service,

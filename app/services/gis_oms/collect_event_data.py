@@ -11,6 +11,12 @@ HEADERS = {"Origin": settings.BASE_HEADERS_ORIGIN_URL, "Referer": settings.BASE_
 async def get_starter_patient_data(
         cookies: dict[str, str], http_service: HTTPXClient, card_number: str
 ) -> dict[str, str] | None:
+    """
+    Выполняет поиск в ЕВМИАС по номеру карты для получения стартовых данных госпитализации.
+    Возвращает первый найденный результат.
+    Выбрасывает HTTPException при ошибках API, неверном формате ответа или если данные не найдены.
+    """
+    logger.debug(f"Запрос стартовых данных по номеру карты: {card_number}")
     url = BASE_URL
     headers = HEADERS
     params = {"c": "Search", "m": "searchData"}
@@ -24,6 +30,7 @@ async def get_starter_patient_data(
             headers=headers,
             params=params,
             data=data,
+            raise_for_status=True  # fetch выкинет HTTPStatusError если не 2xx
         )
         return response.get('json').get('data')[0]
 
