@@ -1,6 +1,9 @@
+import json
+
 from fastapi import HTTPException
 
 from app.core import HTTPXClient, logger, get_settings
+from app.models import Event
 
 settings = get_settings()
 
@@ -10,7 +13,7 @@ HEADERS = {"Origin": settings.BASE_HEADERS_ORIGIN_URL, "Referer": settings.BASE_
 
 async def get_starter_patient_data(
         cookies: dict[str, str], http_service: HTTPXClient, card_number: str
-) -> dict[str, str] | None:
+) -> Event | None:
     """
     Выполняет поиск в ЕВМИАС по номеру карты для получения стартовых данных госпитализации.
     Возвращает первый найденный результат.
@@ -32,7 +35,9 @@ async def get_starter_patient_data(
             data=data,
             raise_for_status=True  # fetch выкинет HTTPStatusError если не 2xx
         )
-        return response.get('json').get('data')[0]
+        data = response.get('json').get('data')[0]
+        event = Event.model_validate(data)
+        return event
 
     except HTTPException as e:
         # Ловим ошибки HTTP, которые могли быть подняты декоратором log_and_catch или самим httpx
@@ -49,5 +54,5 @@ async def collect_event_data(
         http_service: HTTPXClient,
         card_number: str
 ):
-    starter_data = await get_starter_patient_data(cookies, http_service, card_number)
-    return starter_data
+    event = await get_starter_patient_data(cookies, http_service, card_number)
+    return event

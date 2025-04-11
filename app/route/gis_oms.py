@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Path
 
 from app.core import get_settings, HTTPXClient, get_http_service, logger
 from app.core.decorators import route_handler
-from app.models import PatientSearch
+from app.models import PatientSearch, Event
 from app.services import set_cookies, fetch_and_filter, collect_event_data
 
 settings = get_settings()
@@ -46,6 +46,8 @@ async def get_patient(
     path="/get_event/{card_number}",
     summary="Получить детали госпитализации",
     description="Запрашивает детальную информацию о конкретной госпитализации по её ID.",
+    response_model=Event,
+    response_model_by_alias=False,
     responses={  # Документируем возможные ответы
         200: {"description": "Успешный ответ с деталями"},
         404: {"description": "Госпитализация с указанным ID не найдена"},

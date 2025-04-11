@@ -1,15 +1,17 @@
 from typing import Optional, List, Dict, Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
-# Модель персональных данных пациента
+# --- Вспомогательные модели для группировки ---
+
 class PersonalData(BaseModel):
+    """Личные данные пациента."""
     id: str = Field(..., alias="Person_id", description="ID пациента в МИС")
     last_name: str = Field(..., alias="Person_Surname", description="Фамилия")
     first_name: str = Field(..., alias="Person_Firname", description="Имя")
-    middle_name: str = Field(None, alias="Person_Secname", description="Отчество")
-    birthday: str = Field(..., alias="Person_Birthdate", description="Дата рождения в формате DD.MM.YYYY")
+    middle_name: Optional[str] = Field(None, alias="Person_Secname", description="Отчество")
+    birthday: Optional[str] = Field(None, alias="Person_Birthday", description="Дата рождения в формате DD.MM.YYYY")
     # todo: добавим поле с полом пациента, будем получать его позднее
     gender: Optional[str] = Field(None, alias="Person_Sex", description="Пол")
     death_date: Optional[str] = Field(None, alias="Person_deadDT", description="Дата смерти")
@@ -20,8 +22,8 @@ class PersonalData(BaseModel):
     }
 
 
-# --- Модель для данных о конкретной госпитализации ---
 class HospitalizationData(BaseModel):
+    """Основные данные госпитализации"""
     id: str = Field(..., alias="EvnPS_id", description="ID госпитализации в МИС")
     card_number: str = Field(..., alias="EvnPS_NumCard", description="Номер карты стационарного больного")
     start_date: str = Field(..., alias="EvnPS_setDate", description="Дата начала госпитализации")
@@ -37,17 +39,15 @@ class HospitalizationData(BaseModel):
     ksg: Optional[str] = Field(None, alias="EvnSection_KSG", description="КСГ")
     ksg_kpg: Optional[str] = Field(None, alias="EvnSection_KSGKPG", description="КСГ/КПГ")
     operation_count: Optional[str] = Field(None, alias="EvnUslugaOperCount", description="Количество операций")
-    # --- Поля для данных, которые будем собирать ДОПОЛНИТЕЛЬНО ---
-    operations: List[Dict[str, Any]] = Field(default_factory=list, description="Список операций (услуг)")
-    diagnoses: List[Dict[str, Any]] = Field(default_factory=list, description="Список диагнозов")
 
     model_config = {
         "populate_by_name": True,
         "extra": "ignore"
     }
 
-# --- Модель для сервисных данных (ids и прочее) ---
+
 class ServiceData(BaseModel):
+    """Сервисные идентификаторы."""
     event_id: str = Field(..., alias="EvnPS_id", description="ID госпитализации в МИС")
     person_id: str = Field(..., alias="Person_id", description="ID пациента в МИС")
     person_event_id: str = Field(..., alias="PersonEvn_id", description="ID связи пациента с госпитализацией в МИС")
@@ -57,3 +57,41 @@ class ServiceData(BaseModel):
         "populate_by_name": True,
         "extra": "ignore"
     }
+
+
+# --- Основная модель Event ---
+class Event(BaseModel):
+    """
+    Объединенная модель для хранения всех данных, связанных с одной госпитализацией пациента,
+    сгруппированных по логическим блокам.
+    """
+    personal: PersonalData = Field(description="Личные данные пациента")
+    hospitalization: HospitalizationData = Field(description="Основные данные госпитализации")
+    service: ServiceData = Field(description="Сервисные данные")
+
+    # --- Поля для данных, которые будем собирать ДОПОЛНИТЕЛЬНО ---
+    operations: List[Dict[str, Any]] = Field(default_factory=list, description="Список операций (услуг)")
+    diagnoses: List[Dict[str, Any]] = Field(default_factory=list, description="Список диагнозов")
+
+    @model_validator(mode='before') # noqa
+    @classmethod
+    def group_flat_data(cls, data: Any) -> Dict[str, Any]:
+        """
+        Преобразует плоский словарь данных (из JSON ответа ЕВМИАС)
+        во вложенную структуру, ожидаемую моделью Event, перед стандартной валидацией.
+        """
+        if not isinstance(data, dict):
+            raise ValueError("Input data for Event must be a dictionary")
+
+        # Создаем словарь, где ключи - имена полей Event (personal, hospitalization, service),
+        # а значения - это исходный словарь data. Pydantic сам разберется
+        # с алиасами внутри вложенных моделей PersonalData, HospitalizationCoreData, ServiceData.
+        grouped_data = {
+            "personal": data.copy(),  # Копируем, чтобы избежать мутаций, если data используется где-то еще
+            "hospitalization": data.copy(),
+            "service": data.copy(),
+            # Переносим поля для доп. данных, если они вдруг уже есть во входных данных
+            "operations": data.get("operations", []),
+            "diagnoses": data.get("diagnoses", [])
+        }
+        return grouped_data
