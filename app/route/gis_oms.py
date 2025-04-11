@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Annotated
 
 from fastapi import APIRouter, Depends, Path
 
@@ -13,11 +13,22 @@ router = APIRouter(prefix="/evmias-oms", tags=["Сбор данных о пац�
 
 
 @route_handler(debug=settings.DEBUG_ROUTE)
-@router.post("/get_patient")
+@router.post(
+    path="/get_patient",
+    summary="Получить список госпитализаций пациента если в них есть операции",
+    description="Запрашивает госпитализации пациента по ФИО/дате рождения и возвращает "
+                "список госпитализаций, в которых есть операции.",
+    responses={  # Документируем возможные ответы
+        200: {"description": "Успешный ответ с данными о госпитализациях"},
+        404: {"description": "Пациент с указанными данными не найден"},
+        500: {"description": "Внутренняя ошибка сервера"},
+        502: {"description": "Ошибка при получении данных от внешней системы (ЕВМИАС)"}
+    }
+)
 async def get_patient(
         patient_search: PatientSearch,
-        cookies: dict[str, str] = Depends(set_cookies),
-        http_service: HTTPXClient = Depends(get_http_service)
+        cookies: Annotated[dict[str, str], Depends(set_cookies)],
+        http_service: Annotated[HTTPXClient, Depends(get_http_service)]
 ) -> List[Dict[str, Any]]:
     """
     Ищет госпитализации пациента по ФИО/дате рождения и возвращает список данных
@@ -43,9 +54,9 @@ async def get_patient(
     }
 )
 async def get_event_details_by_card(
+        cookies: Annotated[dict[str, str], Depends(set_cookies)],
+        http_service: Annotated[HTTPXClient, Depends(get_http_service)],
         card_number: str = Path(..., description="номер карты пациента"),
-        cookies: dict[str, str] = Depends(set_cookies),
-        http_service: HTTPXClient = Depends(get_http_service)
 ):
     """
     Сбор стартовых данных о госпитализации с номером карты {card_number}.
