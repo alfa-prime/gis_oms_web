@@ -139,16 +139,16 @@ class HTTPXClient:
 
 
 
-async def get_http_service(request: Request) -> HTTPXClient:
-    """
-    Зависимость FastAPI для получения экземпляра сервиса HTTPXClient.
-    Использует базовый клиент, хранящийся в app.state.
-    """
-    # Достаем базовый клиент из app.state, который был создан в lifespan
-    base_client: Optional[AsyncClient] = getattr(request.app.state, "http_client", None)
-    if base_client is None:
-        # Это не должно произойти, если lifespan настроен правильно
-        logger.critical("Базовый HTTPX клиент не найден в app.state!")
-        raise RuntimeError("Базовый HTTPX клиент не был инициализирован.")
-    # Создаем и возвращаем экземпляр нашего сервиса HTTPXClient
-    return HTTPXClient(client=base_client)
+# async def get_http_service(request: Request) -> HTTPXClient:
+#     """
+#     Зависимость FastAPI для получения экземпляра сервиса HTTPXClient.
+#     Использует базовый клиент, хранящийся в app.state.
+#     """
+#     # Достаем базовый клиент из app.state, который был создан в lifespan
+#     base_client: Optional[AsyncClient] = getattr(request.app.state, "http_client", None)
+#     if base_client is None:
+#         # Это не должно произойти, если lifespan настроен правильно
+#         logger.critical("Базовый HTTPX клиент не найден в app.state!")
+#         raise RuntimeError("Базовый HTTPX клиент не был инициализирован.")
+#     # Создаем и возвращаем экземпляр нашего сервиса HTTPXClient
+#     return HTTPXClient(client=base_client)

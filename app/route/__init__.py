@@ -16,3 +16,9 @@ api_router.include_router(evmias_router)
 
 web_router = APIRouter(prefix="/web")
 web_router.include_router(frontend_router)
+
+
+__all__ = [
+    "api_router",
+    "web_router"
+]

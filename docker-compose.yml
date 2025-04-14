@@ -1,0 +1,40 @@
+services:
+  # Сервис Redis
+  redis:
+    image: redis:7-alpine # Используем легковесный alpine образ Redis (версия 7)
+    container_name: med_extractor_redis # Задаем имя контейнеру для удобства
+    command: redis-server --save 60 1 --loglevel warning # Опционально: настроить сохранение и логирование
+    volumes:
+      - redis_data:/data # Используем именованный volume для сохранения данных Redis
+    restart: unless-stopped
+
+  # Сервис FastAPI приложения
+  app:
+    build:
+      context: . # Собирать из текущей директории
+      dockerfile: Dockerfile # Использовать наш Dockerfile
+    container_name: med_extractor_app # Имя контейнера приложения
+    # Команду запуска берем из CMD Dockerfile (там есть --reload)
+    # command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    depends_on: # Запускать после старта Redis
+      - redis
+    env_file:
+      - .env # Загружаем переменные окружения из файла .env
+             # ВАЖНО: Убедись, что в .env есть REDIS_HOST=redis
+    ports:
+      - "8000:8000" # Пробрасываем порт 8000 контейнера на порт 8000 хоста
+    volumes:
+      # Монтируем код приложения для live reload (режим read-write по умолчанию)
+      - ./app:/code/app
+      - ./static:/code/static
+      - ./templates:/code/templates
+      # Если есть другие файлы/папки в корне, нужные приложению во время работы
+      # - ./handbooks:/code/handbooks # Например, если справочники нужны локально
+      # - ./temp:/code/temp           # Например, если временные файлы нужны локально
+      # Монтируем логи наружу, чтобы они сохранялись на хосте
+      - ./logs:/code/logs
+    restart: unless-stopped
+
+# Определяем именованный volume для данных Redis
+volumes:
+  redis_data:

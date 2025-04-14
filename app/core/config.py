@@ -4,54 +4,52 @@ from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent  # Корень проекта
-DOWNLOADED_DATA_DIR = BASE_DIR / "downloaded_data"
-
-
-# HANDBOOKS_DIR = BASE_DIR / "handbooks"
 
 
 class Settings(BaseSettings):
     """
     Класс конфигурации приложения.
-    Использует `pydantic.BaseSettings` для автоматической загрузки переменных окружения
-    и их валидации.
-
-    Пример `.env` файла:
-    ```
-    COOKIES_FILE=/path/to/cookies.json
-    ```
-
-    Использование:
-    ```python
-    from app.core.config import get_settings
-
-    settings = get_settings()
-    print(settings.COOKIES_FILE)  # Выведет путь из `.env` или переменной окружения
-    ```
+    Загружает настройки из переменных окружения (файла .env) и валидирует их типы.
     """
+    # === EVMIAS Connection ===
     BASE_URL: str
-    NSI_BASE_URL: str
     BASE_HEADERS_ORIGIN_URL: str
     BASE_HEADERS_REFERER_URL: str
-    HANDBOOKS_DIR: str
-    TEMP_DIR: str
-    LPU_ID: str
-    KSG_YEAR: str
-    SEARCH_PERIOD_START_DATE: str
+
+    # === EVMIAS Authentication ===
     EVMIAS_LOGIN: str
     EVMIAS_PASSWORD: str
     EVMIAS_SECRET: str
     EVMIAS_PERMUTATION: str
-    COOKIES_FILE: str
+
+    # === NSI Connection ===
+    NSI_BASE_URL: str
+
+    # === Application Logic Parameters ===
+    LPU_ID: str
+    KSG_YEAR: str
+    SEARCH_PERIOD_START_DATE: str
+
+    # === Redis Configuration ===
+    REDIS_HOST: str
+    REDIS_PORT: int # Порт - это число
+    REDIS_DB: int   # Номер базы - это число
+    REDIS_COOKIES_KEY: str
+    REDIS_COOKIES_TTL: int # TTL - это число (секунды)
+
+    # === Local File Paths ===
+    HANDBOOKS_DIR: str # Можно оставить строкой или сделать Path
+    TEMP_DIR: str      # Можно оставить строкой или сделать Path
+
+    # === Logging & Debugging ===
     LOGS_LEVEL: str
     DEBUG_HTTP: bool = False
     DEBUG_ROUTE: bool = False
 
     model_config = SettingsConfigDict(
-        env_file=".env",  # Автоматически загружает переменные из .env
-        env_file_encoding="utf-8",  # Поддержка UTF-8
-        extra="ignore",  # Игнорирует неизвестные переменные окружения из .env
-
+        env_file=BASE_DIR / ".env",  # Явно указываем путь к .env в корне проекта
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
 
 

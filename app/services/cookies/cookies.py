@@ -1,199 +1,276 @@
 import json
-import aiofiles
-from aiopath import AsyncPath
+from typing import Annotated
 
-from fastapi import HTTPException, Depends
+import redis.asyncio as redis
+from fastapi import HTTPException, Depends, status
 from httpx import HTTPStatusError, TimeoutException
+from redis.exceptions import RedisError
 
-from app.core import get_settings, HTTPXClient, get_http_service, logger
+from app.core import (
+    get_settings,
+    logger,
+    get_http_service,
+    HTTPXClient,
+    get_redis_client
+)
+
+# import aiofiles
+# from aiopath import AsyncPath
 
 settings = get_settings()
 
 # Путь к файлу с cookies
-COOKIES_FILE: AsyncPath = AsyncPath(settings.COOKIES_FILE)
+# COOKIES_FILE: AsyncPath = AsyncPath(settings.COOKIES_FILE)
+
 # Базовый URL для запросов к внешнему сервису
 BASE_URL = settings.BASE_URL
 
 
-async def read_cookies_file() -> dict:
-    """Читает cookies из файла и возвращает их в виде словаря.
-        Returns:
-            dict: Словарь с cookies или пустой словарь, если файла нет или данные некорректны.
-    """
-    if not await COOKIES_FILE.exists():
-        logger.info(f"Файл с cookies не найден: {COOKIES_FILE}")
-        return {}
+async def save_cookies_to_redis(redis_client: redis.Redis, cookies: dict):
+    """Асинхронно сохраняет словарь с куками в Redis."""
     try:
-        content = await COOKIES_FILE.read_text(encoding="utf-8")
-        cookies = json.loads(content)
-        if not isinstance(cookies, dict):
-            raise ValueError("Неверный формат cookies")
-        logger.info(f"Сookies успешно загружены из файла {COOKIES_FILE}")
-        return cookies
-    except (json.JSONDecodeError, ValueError) as e:
-        logger.error(f"Ошибка чтения файла с cookies: {e}")
+        json_cookies = json.dumps(cookies, ensure_ascii=False)
+        await redis_client.set(
+            settings.REDIS_COOKIES_KEY,
+            json_cookies,
+            ex=settings.REDIS_COOKIES_TTL  # Устанавливаем TTL
+        )
+        logger.info(
+            f"Куки успешно сохранены в Redis (ключ: '{settings.REDIS_COOKIES_KEY}', TTL: {settings.REDIS_COOKIES_TTL}s)"
+        )
+    except RedisError as e:
+        logger.error(f"Ошибка Redis при сохранении кук: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Ошибка Redis при сохранении кук: {e}"
+        )
+    except Exception as e:  # Ловим и другие возможные ошибки (например, json.dumps)
+        logger.error(f"Неожиданная ошибка при сохранении кук в Redis: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Неожиданная ошибка при сохранении кук в Redis: {e}"
+        )
+
+
+async def load_cookies_from_redis(redis_client: redis.Redis) -> dict:
+    """Асинхронно загружает и парсит куки из Redis."""
+    cookies = {}
+    try:
+        json_cookies_bytes = await redis_client.get(settings.REDIS_COOKIES_KEY)
+        if json_cookies_bytes is None:
+            logger.info(f"Куки не найдены в Redis (ключ: '{settings.REDIS_COOKIES_KEY}')")
+            return {}
+
+        # Декодируем и парсим JSON
+        try:
+            json_cookies_str = json_cookies_bytes.decode('utf-8')
+            cookies = json.loads(json_cookies_str)
+            if not isinstance(cookies, dict):
+                logger.error(f"Неверный формат кук, загруженных из Redis (не словарь): {cookies}")
+                return {}  # Возвращаем пустой словарь при неверном формате
+            logger.info(f"Куки успешно загружены из Redis (ключ: '{settings.REDIS_COOKIES_KEY}')")
+        except (UnicodeDecodeError, json.JSONDecodeError) as e:
+            logger.error(
+                f"Ошибка декодирования/парсинга кук из Redis: {e}. Сырые данные (часть): {json_cookies_bytes[:100]}...")
+            # Возможно, стоит удалить невалидный ключ из Redis?
+            await redis_client.delete(settings.REDIS_COOKIES_KEY)
+            return {}
+
+    except RedisError as e:
+        logger.error(f"Ошибка Redis при загрузке кук: {e}", exc_info=True)
+        # При ошибке чтения возвращаем пустой словарь, как будто кук нет
         return {}
+    except Exception as e:
+        logger.error(f"Неожиданная ошибка при загрузке кук из Redis: {e}", exc_info=True)
+        return {}
+
+    return cookies
 
 
 async def fetch_initial_cookies(http_service: HTTPXClient) -> dict:
-    """Получает первую часть cookies от внешнего сервиса.
-       Returns:
-           dict: Словарь с начальными cookies или пустой словарь, если их нет в ответе.
-   """
+    """Получает первую часть cookies от внешнего сервиса."""
     params = {"c": "portal", "m": "promed", "from": "promed"}
-    response = await http_service.fetch(url=BASE_URL, method="GET", params=params)
+    # Используем http_service, обработка ошибок внутри fetch
+    response = await http_service.fetch(url=BASE_URL, method="GET", params=params, raise_for_status=False)
+    if response["status_code"] != 200:
+        logger.error(f"Не удалось получить начальные cookies, статус: {response['status_code']}")
+        raise HTTPException(status_code=response["status_code"], detail="Не удалось получить начальные cookies")
     logger.info("Первая часть cookies получена успешно")
     return response.get('cookies', {})
 
 
 async def authorize(cookies: dict, http_service: HTTPXClient) -> dict:
-    """Авторизует пользователя на внешнем сервисе и добавляет логин в cookies.
-    Args:
-        cookies (dict): Начальные cookies, полученные от fetch_initial_cookies.
-        http_service (HTTPXClient): Клиент HTTPX для выполнения запросов.
-    Returns:
-        dict: Обновленные cookies с добавленным логином.
-    Raises:
-        HTTPException: Если авторизация не удалась (статус != 200 или "true" нет в ответе).
-    """
+    """Авторизует пользователя и добавляет логин в cookies."""
     params = {"c": "main", "m": "index", "method": "Logon"}
-    # Данные для авторизации
     data = {"login": settings.EVMIAS_LOGIN, "psw": settings.EVMIAS_PASSWORD}
-    response = await http_service.fetch(url=BASE_URL, method="POST", cookies=cookies, params=params, data=data)
+    # Используем http_service
+    response = await http_service.fetch(
+        url=BASE_URL,
+        method="POST",
+        cookies=cookies,
+        params=params,
+        data=data,
+        raise_for_status=False
+    )
 
-    # Проверка успешности авторизации
-    if response["status_code"] != 200 or "true" not in response["text"]:
-        raise HTTPException(status_code=401, detail="Авторизация не удалась")
+    if response["status_code"] != 200 or "true" not in response.get("text", ""):
+        logger.error(
+            f"Авторизация в ЕВМИАС не удалась. "
+            f"Статус: {response['status_code']}, "
+            f"Ответ: {response.get('text', '')[:100]}..."
+        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Авторизация не удалась")
 
-    # Добавляем логин в cookies
-    cookies["login"] = settings.EVMIAS_LOGIN
+    new_cookies = cookies.copy()  # Работаем с копией
+    new_cookies["login"] = settings.EVMIAS_LOGIN
+    # Добавляем куки из ответа, если они есть
+    new_cookies.update(response.get('cookies', {}))
     logger.info("Авторизация прошла успешно")
-    return cookies
+    return new_cookies
 
 
 async def fetch_final_cookies(cookies: dict, http_service: HTTPXClient) -> dict:
-    """Получает финальную часть cookies через POST-запрос к сервлету.
-    Args:
-        cookies (dict): Cookies после авторизации.
-        http_service (HTTPXClient): Клиент HTTPX для выполнения запросов.
-    Returns:
-        dict: Обновленные cookies с финальными данными.
-    Raises:
-        HTTPException: Если запрос завершился с ошибкой (статус != 200).
-    """
+    """Получает финальную часть cookies через POST-запрос к сервлету."""
     url = f"{BASE_URL}ermp/servlets/dispatch.servlet"
     headers = {
         "Content-Type": "text/x-gwt-rpc; charset=utf-8",
         "X-Gwt-Permutation": settings.EVMIAS_PERMUTATION,
         "X-Gwt-Module-Base": "https://evmias.fmba.gov.ru/ermp/",
     }
-    # Секретные данные для запроса
     data = settings.EVMIAS_SECRET
-    response = await http_service.fetch(url=url, method="POST", headers=headers, cookies=cookies, data=data)
+    # Используем http_service
+    response = await http_service.fetch(
+        url=url,
+        method="POST",
+        headers=headers,
+        cookies=cookies,
+        data=data,
+        raise_for_status=False
+    )
 
-    # Проверка успешности запроса
     if response["status_code"] != 200:
         logger.error(f"Ошибка получения второй части cookies: {response['status_code']}")
-        raise HTTPException(status_code=400, detail="Ошибка получения второй части cookies")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ошибка получения второй части cookies от ЕВМИАС"
+        )
 
-    # Обновляем cookies из ответа
-    cookies.update(response.get('cookies', {}))
+    final_cookies = cookies.copy()
+    final_cookies.update(response.get('cookies', {}))
     logger.info("Вторая часть cookies получена")
-    return cookies
+    return final_cookies
 
 
-async def get_new(http_service: HTTPXClient):
-    """Получает новые cookies через последовательные запросы и сохраняет их в файл.
-       Returns:
-           dict: Новые cookies.
-       Raises:
-           HTTPException: В случае ошибок HTTP, таймаута, записи файла или непредвиденных исключений.
-       """
-    try:
-        # Последовательное получение cookies
-        cookies = await fetch_initial_cookies(http_service)
-        cookies = await authorize(cookies, http_service)
-        cookies = await fetch_final_cookies(cookies, http_service)
-
-        # Сохранение cookies в файл
-        logger.info(f"Сохранение cookies в файл {COOKIES_FILE}")
-        await COOKIES_FILE.parent.mkdir(parents=True, exist_ok=True)
-        async with aiofiles.open(COOKIES_FILE, "w", encoding="utf-8") as f:
-            await f.write(json.dumps(cookies, ensure_ascii=False, indent=4))
-        logger.info(f"Сookies сохранены в файл {COOKIES_FILE}")
-        return cookies
-
-    except HTTPStatusError as e:
-        logger.error(f"HTTP ошибка при получении cookies: {e}")
-        raise HTTPException(status_code=e.response.status_code, detail=str(e))
-
-    except TimeoutException:
-        logger.error("Превышено время ожидания запроса при получении cookies")
-        raise HTTPException(status_code=504, detail="Превышено время ожидания запроса")
-
-    except OSError as e:
-        logger.error(f"Ошибка при сохранении кук в файл: {e}")
-        raise HTTPException(status_code=500, detail="Ошибка при сохранении cookies в файл")
-
-    except Exception as e:
-        logger.error(f"Неожиданная ошибка при получении кук: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Неожиданная ошибка при получении cookies")
-
-
-async def check_existing(http_service: HTTPXClient) -> bool:
-    """Проверяет, действительны ли существующие cookies.
-        Returns:
-            bool: True, если cookies валидны, иначе False.
+# --- Функция для получения новых cookies (объединяет шаги и сохраняет в Redis) ---
+async def get_new_cookies(http_service: HTTPXClient, redis_client: redis.Redis) -> dict:
     """
-    cookies = await read_cookies_file()
+    Получает НОВЫЕ cookies через последовательные запросы и сохраняет их в Redis.
+    Выбрасывает HTTPException при ошибках взаимодействия с ЕВМИАС или Redis.
+    """
+    try:
+        logger.info("Начинаем процесс получения новых cookies...")
+        initial_cookies = await fetch_initial_cookies(http_service)
+        authorized_cookies = await authorize(initial_cookies, http_service)
+        final_cookies = await fetch_final_cookies(authorized_cookies, http_service)
+
+        # Сохраняем финальные cookies в Redis
+        await save_cookies_to_redis(redis_client, final_cookies)
+
+        return final_cookies
+
+    except HTTPException as e:
+        # Пробрасываем HTTP ошибки, возникшие на шагах выше
+        logger.error(f"HTTP ошибка во время получения новых cookies: {e.detail}")
+        raise e
+    except RedisError as e:  # Ловим ошибки Redis при сохранении
+        logger.error(f"Ошибка Redis при сохранении новых cookies: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Ошибка сохранения сессии (Redis)")
+    except Exception as e:
+        logger.error(f"Неожиданная ошибка при получении новых кук: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Неожиданная ошибка при получении сессии")
+
+
+# --- Функция для проверки существующих кук (теперь из Redis) ---
+
+async def check_existing_cookies(redis_client: redis.Redis, http_service: HTTPXClient) -> bool:
+    """Проверяет, действительны ли cookies, хранящиеся в Redis."""
+    cookies = await load_cookies_from_redis(redis_client)
     if not cookies:
+        logger.info("cookies для проверки не найдены в Redis.")
         return False
 
     params = {"c": "Common", "m": "getCurrentDateTime"}
     data = {"is_activerules": "true"}
 
     try:
-        response = await http_service.fetch(url=BASE_URL, method="POST", params=params, cookies=cookies, data=data)
-        # Проверка: если статус 200 и есть JSON-ответ, cookies считаются валидными
-        if response["status_code"] == 200 and response["json"]:
-            logger.info("Сookies действительны")
+        # Используем http_service с текущими куками
+        response = await http_service.fetch(
+            url=BASE_URL,
+            method="POST",
+            params=params,
+            cookies=cookies,
+            data=data,
+            raise_for_status=False
+        )
+
+        if response["status_code"] == 200 and response.get("json") is not None:
+            logger.info("Проверка существующих cookies: Успешно (валидны)")
             return True
-        logger.error("Сookies недействительны")
+        else:
+            logger.warning(
+                f"Проверка существующих cookies: Невалидны (Статус: {response['status_code']}, "
+                f"JSON: {response.get('json') is not None})"
+            )
+            return False
+    except HTTPException as e:
+        # Ошибки сети/сервера при проверке кук означают, что мы не можем их валидировать
+        logger.warning(
+            f"Ошибка при проверке существующих cookies ({type(e).__name__}): {e.detail}. "
+            f"Считаем cookies невалидными."
+        )
         return False
     except Exception as e:
-        logger.error(f"Ошибка при проверке существующих cookies: {e}")
-        return False
+        logger.error(f"Неожиданная ошибка при проверке существующих cookies: {e}", exc_info=True)
+        return False # Считаем невалидными при любой ошибке проверки
 
 
-async def load_cookies() -> dict:
-    """Загружает cookies из файла.
-       Returns:
-           dict: Словарь с cookies или пустой словарь, если загрузка не удалась.
-   """
-    return await read_cookies_file()
-
-
-async def set_cookies(http_service: HTTPXClient = Depends(get_http_service)) -> dict:
-    """Устанавливает cookies: использует существующие, если они валидны, иначе получает новые.
-    Returns:
-        dict: Действующие cookies.
-    Raises:
-        HTTPException: Если произошла ошибка при получении или проверке cookies.
+async def set_cookies(
+    # Внедряем зависимости через Annotated
+    http_service: Annotated[HTTPXClient, Depends(get_http_service)],
+    redis_client: Annotated[redis.Redis, Depends(get_redis_client)]
+) -> dict:
+    """
+    Основная FastAPI зависимость для получения действительных cookies.
+    Проверяет cookies из Redis, если они невалидны или отсутствуют - получает новые.
+    Возвращает словарь с действительными cookies.
+    Выбрасывает HTTPException при невозможности получить/обновить cookies.
     """
     try:
-        if await check_existing(http_service):
-            logger.info("Текущие cookies действительны")
-            cookies = await load_cookies()
+        # Передаем зависимости явно в check_existing_cookies
+        if await check_existing_cookies(redis_client=redis_client, http_service=http_service):
+            logger.debug("Используем существующие валидные cookies из Redis.")
+            # Передаем зависимость явно в load_cookies_from_redis
+            cookies = await load_cookies_from_redis(redis_client=redis_client)
+            # Доп. проверка на случай, если cookies исчезли между проверкой и загрузкой
             if not cookies:
-                logger.error("Текущие cookies недействительны, получаем новые.")
-                cookies = await get_new(http_service)
+                 logger.warning("cookies исчезли из Redis после проверки валидности. Получаем новые.")
+                 cookies = await get_new_cookies(http_service=http_service, redis_client=redis_client)
         else:
-            logger.info("Текущие cookies недействительны, получаем новые.")
-            cookies = await get_new(http_service)
+            logger.info("Существующие cookies невалидны или отсутствуют. Получаем новые.")
+            # Передаем зависимости явно в get_new_cookies
+            cookies = await get_new_cookies(http_service=http_service, redis_client=redis_client)
+
+        if not cookies:
+             # Эта ситуация не должна произойти, если get_new_cookies работает правильно
+             logger.critical("Не удалось получить или загрузить cookies после всех попыток!")
+             raise HTTPException(status_code=500, detail="Не удалось установить сессию ЕВМИАС")
 
         return cookies
+
     except HTTPException as e:
-        raise
+        # Пробрасываем HTTP ошибки, которые могли возникнуть в check_existing или get_new
+        raise e
     except Exception as e:
-        logger.debug(f"Ошибка при установке кук: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Ошибка получения cookies")
+        # Ловим остальные неожиданные ошибки на этом уровне
+        logger.critical(f"Критическая ошибка в set_cookies: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Внутренняя ошибка при управлении сессией")

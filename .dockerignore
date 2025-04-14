@@ -1,0 +1,55 @@
+# Исключаем виртуальное окружение
+.venv
+venv
+env
+
+# Исключаем файлы кэша Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Исключаем файлы IDE и Git
+.idea
+.vscode
+*.iml
+.git
+.gitignore
+
+# Исключаем конфигурационные файлы Docker (они не нужны внутри образа)
+.dockerignore
+Dockerfile
+docker-compose.yml
+
+# Исключаем лог-файлы и временные данные
+logs/
+temp/
+*.log
+*.zip # Скачанные архивы справочников
+
+# Исключаем файлы, генерируемые pip/ОС
+pip-log.txt
+pip-delete-this-directory.txt
+Thumbs.db
+.DS_Store
+
+# Исключаем директорию со скачанными/сгенерированными справочниками,
+# если они не должны быть частью образа (а, например, генерируются при старте или монтируются)
+handbooks/
+
+# Исключаем cookies.json, так как теперь будет Redis
+cookies.json
+
+# Другие ненужные файлы/папки
+node_modules/ # Если вдруг запускали npm локально
+dist/
+build/
+*.egg-info/
+*.so
+*.o
+*.a
+
+# Можно исключить README или другие файлы документации
+README.md
+LICENSE

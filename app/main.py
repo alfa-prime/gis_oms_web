@@ -1,57 +1,40 @@
 from contextlib import asynccontextmanager
-import httpx
+
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.core import logger, load_handbook, handbooks_storage
-# from app.core import HTTPXClient, logger, load_handbook, handbooks_storage
+from app.core import (
+    logger,
+    init_httpx_client,
+    shutdown_httpx_client,
+    init_redis_client,
+    shutdown_redis_client,
+    load_all_handbooks
+)
 from app.route import api_router, web_router
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):  # noqa
+async def lifespan(app: FastAPI):
     """
-    Управление жизненным циклом приложения:
-    - Создание и закрытие базового HTTPX клиента.
-    - Загрузка справочников.
+    Управление жизненным циклом приложения: инициализация и закрытие ресурсов.
     """
-    # Создаем базовый httpx.AsyncClient
-    base_client = httpx.AsyncClient(timeout=30.0, verify=False)
-    # Сохраняем его в app.state, чтобы зависимости могли его получить
-    app.state.http_client = base_client
-    logger.info("Базовый HTTPX клиент инициализирован и сохранен в app.state")
+    # --- Startup Phase ---
+    logger.info("Запуск приложения...")
+    await init_httpx_client(app)
+    await init_redis_client(app)
+    await load_all_handbooks()
+    logger.info("Инициализация завершена.")
 
-    # await HTTPXClient.initialize()  # Запускаем клиент
-    # logger.info("HTTPXClient инициализирован")
+    # --- Приложение работает ---
+    yield
 
-    # Загружаем справочники из файлов
-    handbooks_storage.handbooks = {}
-    handbook_names = [
-        "referred_by",
-        "referred_lpu_departments",
-        "referred_organizations",
-        "ensurance_companies",
-        "rf_subjects"
-    ]
-    for name in handbook_names:
-        try:
-            handbooks_storage.handbooks[name] = await load_handbook(name)
-            logger.debug(f"Справочник '{name}' загружен")
-        except Exception as e:
-            logger.warning(f"Не удалось загрузить справочник '{name}': {e}")
-
-    if any(handbooks_storage.handbooks.values()):
-        logger.info(f"Справочники загружены: {list(handbooks_storage.handbooks.keys())}")
-    else:
-        logger.error("Ни один справочник не загружен")
-
-    yield  # Приложение работает
-
-    # Закрываем базовый клиент при завершении работы
-    await app.state.http_client.aclose()
-    logger.info("Базовый HTTPX клиент закрыт")
-    # await HTTPXClient.shutdown()  # Закрываем клиент при завершении работы
-    # logger.info("HTTPXClient закрыт")
+    # --- Shutdown Phase ---
+    logger.info("Завершение работы приложения...")
+    await shutdown_redis_client(app)  # Закрываем Redis перед HTTPX на всякий случай
+    await shutdown_httpx_client(app)
+    logger.info("Ресурсы освобождены.")
 
 
 tags_metadata = [
@@ -61,7 +44,7 @@ tags_metadata = [
 app = FastAPI(
     openapi_tags=tags_metadata,
     title="Medical Extractor",
-    description="Medical Extractor",
+    description="Веб-приложение для сбора данных из ЕВМИАС и генерации XML.",
     lifespan=lifespan
 )
 
@@ -71,3 +54,8 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # Подключаем маршруты API
 app.include_router(api_router)
 app.include_router(web_router)
+
+
+@app.get("/", include_in_schema=False)
+async def root_redirect():
+    return RedirectResponse(url="/web/")
