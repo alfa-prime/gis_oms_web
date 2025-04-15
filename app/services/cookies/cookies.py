@@ -184,10 +184,16 @@ async def get_new_cookies(http_service: HTTPXClient, redis_client: redis.Redis) 
         raise e
     except RedisError as e:  # Ловим ошибки Redis при сохранении
         logger.error(f"Ошибка Redis при сохранении новых cookies: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Ошибка сохранения сессии (Redis)")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ошибка сохранения сессии (Redis)"
+        )
     except Exception as e:
         logger.error(f"Неожиданная ошибка при получении новых кук: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Неожиданная ошибка при получении сессии")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Неожиданная ошибка при получении сессии"
+        )
 
 
 # --- Функция для проверки существующих кук (теперь из Redis) ---
@@ -263,7 +269,10 @@ async def set_cookies(
         if not cookies:
              # Эта ситуация не должна произойти, если get_new_cookies работает правильно
              logger.critical("Не удалось получить или загрузить cookies после всех попыток!")
-             raise HTTPException(status_code=500, detail="Не удалось установить сессию ЕВМИАС")
+             raise HTTPException(
+                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                 detail="Не удалось установить сессию ЕВМИАС"
+             )
 
         return cookies
 
@@ -273,4 +282,7 @@ async def set_cookies(
     except Exception as e:
         # Ловим остальные неожиданные ошибки на этом уровне
         logger.critical(f"Критическая ошибка в set_cookies: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Внутренняя ошибка при управлении сессией")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Внутренняя ошибка при управлении сессией"
+        )
