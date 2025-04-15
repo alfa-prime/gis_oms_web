@@ -11,17 +11,19 @@ HEADERS = {"Origin": settings.BASE_HEADERS_ORIGIN_URL, "Referer": settings.BASE_
 
 router = APIRouter(prefix="/test", tags=["Тестовые запросы"])
 
-@router.get("/smo_name_by_id/{smo_id}")
+@router.get("/person_data/{person_id}")
 async def smo_name_by_id(
         cookies: Annotated[dict[str, str], Depends(set_cookies)],
         http_service: Annotated[HTTPXClient, Depends(get_http_service)],
-        smo_id: str = Path(..., description="номер карты пациента")
+        person_id: str = Path(..., description="id пациента")
 ):
     url = BASE_URL
     headers = HEADERS
-    params = {"c": "Org", "m": "getOrgList"}
+    params = {"c": "Common", "m": "loadPersonData"}
     data = {
-        "OrgSMO_id": smo_id,
+        "Person_id": person_id,
+        "LoadShort": True,
+        "mode": "PersonInfoPanel"
     }
 
     response = await http_service.fetch(
@@ -33,4 +35,4 @@ async def smo_name_by_id(
         data=data,
     )
 
-    return response
+    return response.get("json", {})

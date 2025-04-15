@@ -12,9 +12,15 @@ class PersonalData(BaseModel):
     first_name: str = Field(..., alias="Person_Firname", description="Имя")
     middle_name: Optional[str] = Field(None, alias="Person_Secname", description="Отчество")
     birthday: Optional[str] = Field(None, alias="Person_Birthday", description="Дата рождения в формате DD.MM.YYYY")
-    # todo: добавим поле с полом пациента, будем получать его позднее
-    gender: Optional[str] = Field(None, alias="Person_Sex", description="Пол")
+    gender_name: Optional[str] = Field(None, alias="Sex_Name", description="Пол (loadPersonDatat)")
     death_date: Optional[str] = Field(None, alias="Person_deadDT", description="Дата смерти")
+    death_time: Optional[str] = Field(None, alias="Person_deadTime", description="Время смерти")
+    address_registration: Optional[str] = Field(None, alias="Person_RAddress", description="Адрес регистрации")
+    address_actual: Optional[str] = Field(None, alias="Person_PAddress", description="Адрес фактический")
+    phone_number: Optional[str] = Field(None, alias="Person_Phone", description="Номер телефона")
+    snils: Optional[str] = Field(None, alias="Person_Snils", description="СНИЛС")
+    job_name: Optional[str] = Field(None, alias="Person_Job", description="Работа")
+    social_status_name: Optional[str] = Field(None, alias="SocStatus_Name", description="Социальный статус")
 
     model_config = {
         "populate_by_name": True,
@@ -52,6 +58,8 @@ class ServiceData(BaseModel):
     person_id: str = Field(..., alias="Person_id", description="ID пациента в МИС")
     person_event_id: str = Field(..., alias="PersonEvn_id", description="ID связи пациента с госпитализацией в МИС")
     server_id: str = Field(..., alias="Server_id", description="ID сервера")
+    server_pid: Optional[str] = Field(None, alias="Server_pid", description="pid сервера (из loadPersonData)")
+    sex_id: Optional[str] = Field(None, alias="Sex_id", description="ID пола (из loadPersonData [1-м; 2-ж; 3-неопр.])")
 
     model_config = {
         "populate_by_name": True,
