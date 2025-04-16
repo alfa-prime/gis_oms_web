@@ -28,6 +28,20 @@ class PersonalData(BaseModel):
     }
 
 
+class InsuranceData(BaseModel):
+    """Данные страховки."""
+    insurance_company_id: Optional[str] = Field(None, alias="OrgSmo_id", description="ID страховой организации")
+    insurance_company_name: Optional[str] = Field(None, alias="OrgSmo_Name", description="Страховая организация")
+    polis_seria: Optional[str] = Field(None, alias="Polis_Ser", description="Серия полиса")
+    polis_number: Optional[str] = Field(None, alias="Polis_Num", description="Номер полиса")
+    polis_begin_date: Optional[str] = Field(None, alias="Polis_begDate", description="Дата начала действия полиса")
+
+    model_config = {
+        "populate_by_name": True,
+        "extra": "ignore"
+    }
+
+
 class HospitalizationData(BaseModel):
     """Основные данные госпитализации"""
     id: str = Field(..., alias="EvnPS_id", description="ID госпитализации в МИС")
@@ -60,6 +74,9 @@ class ServiceData(BaseModel):
     server_id: str = Field(..., alias="Server_id", description="ID сервера")
     server_pid: Optional[str] = Field(None, alias="Server_pid", description="pid сервера (из loadPersonData)")
     sex_id: Optional[str] = Field(None, alias="Sex_id", description="ID пола (из loadPersonData [1-м; 2-ж; 3-неопр.])")
+    insurance_company_id: Optional[str] = Field(None, alias="OrgSmo_Name", description="ID страховой организации")
+    insurance_company_territory_id: Optional[str] = Field(None, alias="OmsSprTerr_id", description="ID территории")
+    insurance_company_territory_code: Optional[str] = Field(None, alias="OmsSprTerr_Code", description="код территории")
 
     model_config = {
         "populate_by_name": True,
@@ -76,6 +93,7 @@ class Event(BaseModel):
     personal: PersonalData = Field(description="Личные данные пациента")
     hospitalization: HospitalizationData = Field(description="Основные данные госпитализации")
     service: ServiceData = Field(description="Сервисные данные")
+    insurance: Optional[InsuranceData] = Field(default=None, description="Данные страховки")
 
     # --- Поля для данных, которые будем собирать ДОПОЛНИТЕЛЬНО ---
     operations: List[Dict[str, Any]] = Field(default_factory=list, description="Список операций (услуг)")
@@ -98,6 +116,7 @@ class Event(BaseModel):
             "personal": data.copy(),  # Копируем, чтобы избежать мутаций, если data используется где-то еще
             "hospitalization": data.copy(),
             "service": data.copy(),
+            "insurance": data.get("insurance", {}),  # Если страховка не найдена, используем пустой словарь
             # Переносим поля для доп. данных, если они вдруг уже есть во входных данных
             "operations": data.get("operations", []),
             "diagnoses": data.get("diagnoses", [])
