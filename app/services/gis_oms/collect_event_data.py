@@ -1,8 +1,10 @@
+import json
+
 from fastapi import HTTPException, status
 from httpx import HTTPStatusError, RequestError
 
 from app.core import HTTPXClient, logger, get_settings
-from app.models import Event
+from app.models import Event, InsuranceData
 
 settings = get_settings()
 
@@ -93,7 +95,16 @@ async def _enrich_event_additional_patient_data(
             raise_for_status=True  # fetch выкинет HTTPStatusError если не 2xx
         )
 
-        additional_data = response.get('json')[0]
+        # Проверяем, что ответ не пустой и содержит данные
+        json_response = response.get('json')
+        if not json_response or not isinstance(json_response, list) or len(json_response) == 0:
+            logger.error(f"Ответ loadPersonData для пациента {person_id} пустой или имеет неверный формат.")
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Некорректный ответ от ЕВМИАС (loadPersonData) для пациента {person_id}"
+            )
+
+        additional_data = json_response[0]
 
         # --- обогащаем event модель данными из ответа ---
         event.personal.gender_name = additional_data.get('Sex_Name', None)
@@ -108,6 +119,13 @@ async def _enrich_event_additional_patient_data(
 
         event.service.server_pid = additional_data.get('Server_pid', None)
         event.service.sex_id = additional_data.get('Sex_id', None)
+        event.service.insurance_company_id = additional_data.get('OrgSmo_id', None)
+        event.service.insurance_company_territory_id = additional_data.get('OmsSprTerr_id', None)
+        event.service.insurance_company_territory_code = additional_data.get('OmsSprTerr_Code', None)
+
+        event.insurance = InsuranceData.model_validate(additional_data)
+        logger.debug(f"Создан и заполнен InsuranceData для event {event.hospitalization.id}")
+
 
         logger.info(f"Дополнительные данные для пациента {person_id} успешно получены.")
         return event
@@ -118,11 +136,73 @@ async def _enrich_event_additional_patient_data(
         logger.error(f"Ошибка запроса для пациента {person_id}: {e}")
         raise  # Пробрасываем ошибку, чтобы декоратор ее поймал
 
+    except HTTPException as e:  # Пробрасываем HTTPException, созданную выше при проверке ответа
+        raise
+
     except Exception as e:
         # Ловим остальные ошибки (валидация, парсинг, структура) здесь для логирования
         logger.error(f"Ошибка обработки ответа для пациента {person_id}: {e}", exc_info=True)
         # Пробрасываем дальше, декоратор превратит в 500/400
         raise
+
+
+async def _get_polis_id(cookies, http_service, event: Event):
+    url = BASE_URL
+    headers = HEADERS
+
+    params = {"c": "Person", "m": "getPersonEditWindow"}
+
+    data = {
+        "person_id": event.service.person_id,
+        "server_id": event.service.server_id,
+        "attrObjects": "true",
+        "mode": [{"object": "PersonEditWindow", "identField": "Person_id"}],
+    }
+
+    try:
+        response = await http_service.fetch(
+            url=url,
+            method="POST",
+            cookies=cookies,
+            headers=headers,
+            params=params,
+            data=data,
+            raise_for_status=True  # fetch выкинет HTTPStatusError если не 2xx
+        )
+
+        # Проверяем, что ответ не пустой и содержит данные
+        json_response = response.get('json')
+        if not json_response or not isinstance(json_response, list) or len(json_response) == 0:
+            logger.error(f"Ответ на запрос id полиса пустой или имеет неверный формат.")
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Некорректный ответ от ЕВМИАС на запрос id полиса"
+            )
+
+        raw_data = json_response[0]
+
+        # --- обогащаем event модель данными из ответа ---
+        event.insurance.polis_type_id = raw_data.get("PolisType_id", None)
+        event.service.polis_type_id = raw_data.get("PolisType_id", None)
+
+        return event
+
+
+    except (HTTPStatusError, RequestError) as e:
+        # Эти ошибки уже обработаны в HTTPXClient и/или будут пойманы декоратором @route_handler,
+        # который преобразует их в 502, 503, 504 и т.д.
+        logger.error(f"Ошибка запроса id полиса: {e}")
+        raise  # Пробрасываем ошибку, чтобы декоратор ее поймал
+
+    except HTTPException as e:  # Пробрасываем HTTPException, созданную выше при проверке ответа
+        raise
+
+    except Exception as e:
+        # Ловим остальные ошибки (валидация, парсинг, структура) здесь для логирования
+        logger.error(f"Ошибка обработки ответа для полис id: {e}", exc_info=True)
+        # Пробрасываем дальше, декоратор превратит в 500/400
+        raise
+
 
 
 async def collect_event_data(
@@ -132,5 +212,5 @@ async def collect_event_data(
 ):
     event = await _get_starter_patient_data(cookies, http_service, card_number)
     event = await _enrich_event_additional_patient_data(cookies, http_service, event)
-
+    event = await _get_polis_id(cookies, http_service, event)
     return event

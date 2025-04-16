@@ -1,6 +1,6 @@
-from typing import Annotated
+from typing import Annotated, List, Dict, Any
 
-from fastapi import APIRouter, Depends, Path
+from fastapi import APIRouter, Depends, Path, Body
 
 from app.services import set_cookies
 from app.core import HTTPXClient, get_http_service, get_settings
@@ -33,6 +33,66 @@ async def smo_name_by_id(
         headers=headers,
         params=params,
         data=data,
+    )
+
+    return response.get("json", {})
+
+
+@router.get("/event_data/{event_id}")
+async def smo_name_by_id(
+        cookies: Annotated[dict[str, str], Depends(set_cookies)],
+        http_service: Annotated[HTTPXClient, Depends(get_http_service)],
+        event_id: str = Path(..., description="id события")
+):
+    url = BASE_URL
+    headers = HEADERS
+    params = {"c": "EvnPS", "m": "loadEvnPSEditForm"}
+    data = {
+        "EvnPS_id": event_id,
+        "archiveRecord": "0",
+        "delDocsView": "0",
+        "attrObjects": [{"object": "EvnPSEditWindow", "identField": "EvnPS_id"}],
+    }
+
+    response = await http_service.fetch(
+        url=url,
+        method="POST",
+        cookies=cookies,
+        headers=headers,
+        params=params,
+        data=data,
+    )
+
+    return response.get("json", {})
+
+
+@router.post("/person_panel")
+async def _get_polis(
+        cookies: Annotated[dict[str, str], Depends(set_cookies)],
+        http_service: Annotated[HTTPXClient, Depends(get_http_service)],
+        person_id: str = Body(..., description="ID пациента"),
+        server_id: str = Body(..., description="ID сервера"),
+):
+    url = BASE_URL
+    headers = HEADERS
+
+    params = {"c": "Person", "m": "getPersonEditWindow"}
+
+    data = {
+        "person_id": person_id,
+        "server_id": server_id,
+        "attrObjects": "true",
+        "mode": [{"object": "PersonEditWindow", "identField": "Person_id"}],
+    }
+
+    response = await http_service.fetch(
+        url=url,
+        method="POST",
+        cookies=cookies,
+        headers=headers,
+        params=params,
+        data=data,
+        raise_for_status=True  # fetch выкинет HTTPStatusError если не 2xx
     )
 
     return response.get("json", {})

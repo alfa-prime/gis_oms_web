@@ -1,5 +1,5 @@
 from .patient import PatientSearch
-from .event import PersonalData, HospitalizationData, ServiceData, Event
+from .event import PersonalData, HospitalizationData, ServiceData, InsuranceData, Event
 
 
 __all__ = [
@@ -7,5 +7,6 @@ __all__ = [
     "PersonalData",
     "HospitalizationData",
     "ServiceData",
+    "InsuranceData",
     "Event"
 ]

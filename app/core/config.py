@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     DEBUG_HTTP: bool = False
     DEBUG_ROUTE: bool = False
 
+    # === TFOMS XML Parameters ===
+    MO_CODE_ERMO: str
+
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",  # Явно указываем путь к .env в корне проекта
         env_file_encoding="utf-8",
