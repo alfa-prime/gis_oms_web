@@ -96,3 +96,22 @@ async def _get_polis(
     )
 
     return response.get("json", {})
+
+
+@router.get("/fias-token/")
+async def get_fias_token(http_service: Annotated[HTTPXClient, Depends(get_http_service)]):
+    """
+    Получение токена для работы с https://fias-public-service.nalog.ru/api/spas/v2.0/swagger/index.html
+    (получение кодов ОКАТО и ОКТМО) GET /api/spas/v2.0/SearchAddressItem
+    """
+    url = "https://fias.nalog.ru/Home/GetSpasSettings"
+    params = {
+        "url": "https://fias.nalog.ru/Search?objectId=0&addressType=2&fullName="
+    }
+    response = await http_service.fetch(
+        url=url,
+        method="GET",
+        params=params,
+        raise_for_status=True  # fetch выкинет HTTPStatusError если не 2xx
+    )
+    return response.get("json", {})
