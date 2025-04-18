@@ -3,6 +3,18 @@ from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field, model_validator
 
 
+# --- подмодель для адреса ---
+class AddressData(BaseModel):
+    """Структурированные данные адреса."""
+    address: Optional[str] = Field(None, description="Исходная строка адреса из ЕВМИАС")
+    full_address: Optional[str] = Field(None, description="Полный адрес, нормализованный ФИАС")
+    okato_code: Optional[str] = Field(None, description="Код ОКАТО, полученный из ФИАС")
+
+    model_config = {
+        "extra": "ignore" # Игнорируем лишние поля при инициализации
+    }
+
+
 # --- Вспомогательные модели для группировки ---
 
 class PersonalData(BaseModel):
@@ -15,16 +27,12 @@ class PersonalData(BaseModel):
     gender_name: Optional[str] = Field(None, alias="Sex_Name", description="Пол (loadPersonData)")
     death_date: Optional[str] = Field(None, alias="Person_deadDT", description="Дата смерти")
     death_time: Optional[str] = Field(None, alias="Person_deadTime", description="Время смерти")
-    address_registration: Optional[str] = Field(None, alias="Person_RAddress", description="Адрес регистрации")
-    address_registration_full: Optional[str] = Field(None, description="Адрес регистрации (подробный")
-    address_registration_okato_code: Optional[str] = Field(None, description="Код ОКАТО адреса регистрации")
-    address_actual: Optional[str] = Field(None, alias="Person_PAddress", description="Адрес фактический")
-    address_actual_full: Optional[str] = Field(None, description="Адрес фактический (подробный)")
-    address_actual_okato_code: Optional[str] = Field(None, description="Код ОКАТО фактического адреса")
     phone_number: Optional[str] = Field(None, alias="Person_Phone", description="Номер телефона")
     snils: Optional[str] = Field(None, alias="Person_Snils", description="СНИЛС")
     job_name: Optional[str] = Field(None, alias="Person_Job", description="Работа")
     social_status_name: Optional[str] = Field(None, alias="SocStatus_Name", description="Социальный статус")
+    registration_address: Optional[AddressData] = Field(default=None, description="Адрес регистрации")
+    actual_address: Optional[AddressData] = Field(default=None, description="Адрес фактический")
 
     model_config = {
         "populate_by_name": True,
