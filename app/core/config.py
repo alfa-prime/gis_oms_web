@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     # === TFOMS XML Parameters ===
     MO_CODE_ERMO: str
 
+    # === FIAS API === 
+    FIAS_API_BASE_URL: str
+    FIAS_TOKEN_URL: str
+
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",  # Явно указываем путь к .env в корне проекта
         env_file_encoding="utf-8",

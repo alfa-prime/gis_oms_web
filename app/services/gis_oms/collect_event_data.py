@@ -1,10 +1,9 @@
-import json
-
 from fastapi import HTTPException, status
 from httpx import HTTPStatusError, RequestError
 
 from app.core import HTTPXClient, logger, get_settings
 from app.models import Event, InsuranceData
+from app.services.fias.fias import get_okato_code
 
 settings = get_settings()
 
@@ -126,7 +125,6 @@ async def _enrich_event_additional_patient_data(
         event.insurance = InsuranceData.model_validate(additional_data)
         logger.debug(f"Создан и заполнен InsuranceData для event {event.hospitalization.id}")
 
-
         logger.info(f"Дополнительные данные для пациента {person_id} успешно получены.")
         return event
 
@@ -204,6 +202,15 @@ async def _get_polis_id(cookies, http_service, event: Event):
         raise
 
 
+async def _enrich_event_okato_codes_for_patient_address(event: Event, http_service: HTTPXClient):
+    address_registration = event.personal.address_registration
+    address_actual = event.personal.address_actual
+    address_registration_okato_code = await get_okato_code(address_registration, http_service)
+    address_actual_okato_code = await get_okato_code(address_actual, http_service)
+    event.personal.address_registration_okato_code = address_registration_okato_code
+    event.personal.address_actual_okato_code = address_actual_okato_code
+    return event
+
 
 async def collect_event_data(
         cookies: dict[str, str],
@@ -213,4 +220,5 @@ async def collect_event_data(
     event = await _get_starter_patient_data(cookies, http_service, card_number)
     event = await _enrich_event_additional_patient_data(cookies, http_service, event)
     event = await _get_polis_id(cookies, http_service, event)
+    event = await _enrich_event_okato_codes_for_patient_address(event, http_service)
     return event

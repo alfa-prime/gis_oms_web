@@ -10,6 +10,8 @@ from .tools.tools import (
 from .gis_oms.gis_oms import fetch_and_filter
 from .gis_oms.collect_event_data import collect_event_data
 
+from .fias.fias import get_okato_code
+
 __all__ = [
     "set_cookies",
     "fetch_and_process_handbook",
@@ -22,4 +24,5 @@ __all__ = [
     "save_handbook",
     "fetch_and_filter",
     "collect_event_data",
+    "get_okato_code",
 ]
