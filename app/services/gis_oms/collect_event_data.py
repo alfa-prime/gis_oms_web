@@ -203,12 +203,61 @@ async def _get_polis_id(cookies, http_service, event: Event):
 
 
 async def _enrich_event_okato_codes_for_patient_address(event: Event, http_service: HTTPXClient):
+    """
+     Добавляет коды ОКАТО и полные адреса из ФИАС в модель Event.
+     Оптимизировано: делает один запрос, если адреса совпадают и не пустые.
+     """
     address_registration = event.personal.address_registration
     address_actual = event.personal.address_actual
-    address_registration_okato_code = await get_okato_code(address_registration, http_service)
-    address_actual_okato_code = await get_okato_code(address_actual, http_service)
-    event.personal.address_registration_okato_code = address_registration_okato_code
-    event.personal.address_actual_okato_code = address_actual_okato_code
+
+    # 1. Проверяем, совпадают ли адреса и не являются ли они пустыми/None
+    # Сравнение строк напрямую. Убедимся, что оба адреса существуют (не None и не пустые строки после strip).
+    are_addresses_valid_and_equal = (
+            address_registration and address_registration.strip() and
+            address_actual and address_actual.strip() and
+            address_registration.strip() == address_actual.strip()
+    )
+
+    if are_addresses_valid_and_equal:
+        # --- Случай 1: Адреса совпадают и не пустые ---
+        logger.info(
+            f"Адреса регистрации и фактический совпадают ('{str(address_registration)[:60]}...').")
+        fias_data = await get_okato_code(address_registration, http_service)  # Вызываем один раз
+
+        if fias_data:
+            okato_code = fias_data.get("okato_code")
+            full_address = fias_data.get("full_address")
+            logger.info(f"ФИАС вернул ОКАТО {okato_code} для общего адреса.")
+            # Применяем результат к обоим полям в Event
+            event.personal.address_registration_full = full_address
+            event.personal.address_registration_okato_code = okato_code
+            event.personal.address_actual_full = full_address
+            event.personal.address_actual_okato_code = okato_code
+        else:
+            logger.warning(f"Не удалось получить ОКАТО для общего адреса: '{str(address_registration)[:60]}...'")
+
+    else:
+        # --- Случай 2: Адреса разные или один/оба пустые/None ---
+        logger.info("Адреса регистрации и фактический различаются или один из них пуст. Проверяем каждый отдельно.")
+
+        # Запрос для адреса регистрации (если он есть)
+        fias_registration_data = await get_okato_code(address_registration, http_service)
+        if fias_registration_data:
+            logger.info(f"ФИАС ОКАТО для рег.: {fias_registration_data.get('okato_code')}")
+            event.personal.address_registration_full = fias_registration_data.get("full_address")
+            event.personal.address_registration_okato_code = fias_registration_data.get("okato_code")
+        elif address_registration and address_registration.strip():  # Логируем предупреждение, только если адрес был непустым
+            logger.warning(f"Не удалось получить ОКАТО для адреса регистрации: '{str(address_registration)[:60]}...'")
+
+        # Запрос для фактического адреса (если он есть)
+        fias_actual_data = await get_okato_code(address_actual, http_service)
+        if fias_actual_data:
+            logger.info(f"ФИАС ОКАТО для факт.: {fias_actual_data.get('okato_code')}")
+            event.personal.address_actual_full = fias_actual_data.get("full_address")
+            event.personal.address_actual_okato_code = fias_actual_data.get("okato_code")
+        elif address_actual and address_actual.strip():  # Логируем предупреждение, только если адрес был непустым
+            logger.warning(f"Не удалось получить ОКАТО для фактического адреса: '{str(address_actual)[:60]}...'")
+
     return event
 
 

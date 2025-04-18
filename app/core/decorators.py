@@ -5,54 +5,51 @@ from typing import Callable, Awaitable, Any, Type, Dict
 
 from fastapi import HTTPException, status, Request
 
-from app.core import logger
+from app.core import logger, get_settings
+
+settings = get_settings()
 
 
-def log_and_catch(debug: bool = True) -> Callable[..., Awaitable[Any]]:
-    """Декоратор для логирования и перехвата ошибок в асинхронных HTTP-функциях.
+def log_and_catch(debug: bool = settings.DEBUG_HTTP) ->  Callable[..., Awaitable[Any]]:
+    """Декоратор для логирования и перехвата ошибок в асинхронных HTTP-функциях (и не только).
 
     Логирует начало и конец выполнения функции, параметры и ошибки (если есть).
-    Используется для функций вроде HTTP-запросов в `HTTPXClient`.
+    Применяется в HTTPXClient и может применяться в других сервисах.
 
     Args:
         debug (bool): Включает подробное логирование параметров, результата и трейсов ошибок.
 
     Returns:
         Callable[..., Awaitable[Any]]: Обернутая функция.
-
-    Example:
-        ```python
-        @log_and_catch(debug=True)
-        async def fetch_data(url: str):
-            return await HTTPXClient.fetch(url)
-        ```
     """
 
     def decorator(func):
         @functools.wraps(func)
         async def wrapper(*args, **kwargs):
-            # Извлекаем метод и URL из kwargs или ставим значения по умолчанию
-            method = kwargs.get("method", "GET")
-            url = kwargs.get("url", "UNKNOWN_URL")
+            # Определяем контекст для лога (имя функции и базовые параметры)
             func_name = func.__name__
+            # Пытаемся угадать 'метод' и 'url' из kwargs, если это HTTP-запрос
+            method = kwargs.get("method", "FUNC")  # Используем FUNC как дефолт, если не HTTP
+            url = kwargs.get("url", func_name)  # Используем имя функции, если URL не передан
 
-            # Лог до вызова функции (если debug включён)
+            # Лог до вызова функции
             if debug:
-                logger.debug(f"[HTTPX] {method} {url} — старт")
-                if "params" in kwargs:
-                    # Ограничиваем длину для читаемости
-                    params_preview = str(kwargs['params'])[:300]
-                    logger.debug(f"[HTTPX] params: {params_preview}")
-                if "data" in kwargs:
-                    data_preview = str(kwargs['data'])[:300]
-                    logger.debug(f"[HTTPX] data: {data_preview}")
-                if "cookies" in kwargs:
-                    # Обрезаем длинные значения cookies для компактности
-                    cookies_preview = {
-                        k: v[:10] + "..." if isinstance(v, str) and len(v) > 10 else v
-                        for k, v in kwargs['cookies'].items()
-                    }
-                    logger.debug(f"[HTTPX] cookies: {cookies_preview}")
+                log_prefix = f"[{method}] {url}"  # Формируем префикс
+                logger.debug(f"{log_prefix} — старт")
+                # Логируем основные аргументы/параметры, если они есть
+                args_preview = str(args)[:300] if args else ""
+                kwargs_preview = str({k: v for k, v in kwargs.items() if k != 'http_service' and k != 'cookies'})[
+                                 :500]  # Исключаем большие объекты
+                if args_preview: logger.debug(f"{log_prefix} Args: {args_preview}...")
+                if kwargs_preview and kwargs_preview != '{}': logger.debug(f"{log_prefix} Kwargs: {kwargs_preview}...")
+                # Дополнительное логирование для HTTPX (если есть)
+                if method != "FUNC":
+                    if "params" in kwargs: logger.debug(f"{log_prefix} Params: {str(kwargs['params'])[:300]}...")
+                    if "data" in kwargs: logger.debug(f"{log_prefix} Data: {str(kwargs['data'])[:300]}...")
+                    if "cookies" in kwargs:
+                        cookies_preview = {k: v[:10] + "..." if isinstance(v, str) and len(v) > 10 else v for k, v in
+                                           kwargs['cookies'].items()}
+                        logger.debug(f"{log_prefix} Cookies: {cookies_preview}")
 
             # Засекаем время выполнения
             start_time = time.perf_counter()
@@ -64,9 +61,40 @@ def log_and_catch(debug: bool = True) -> Callable[..., Awaitable[Any]]:
 
                 # Логирование успешного выполнения
                 if debug:
-                    logger.debug(f"[HTTPX] {method} {url} — успех за {duration}s")
-                    # Логируем обрезанный ответ (json, если есть)
-                    logger.debug(f"[HTTPX] ответ (обрезан): {str(result.get('json', ''))[:500]}")
+                    log_prefix = f"[{method}] {url}"  # Префикс для лога
+                    logger.debug(f"{log_prefix} — успех за {duration}s")
+                    try:
+                        log_msg = f"{log_prefix} Результат: "
+                        if isinstance(result, dict):
+                            # Если это результат от HTTPXClient.fetch
+                            if 'status_code' in result and 'json' in result:
+                                json_data = result.get('json')
+                                preview = str(json_data)[:500] if json_data is not None else 'None'
+                                log_msg += f"HTTP Status: {result['status_code']}, JSON Preview: {preview}"
+                                if len(str(json_data)) > 500: log_msg += "..."
+                            # Если это другой словарь (например, от process_getting_code)
+                            else:
+                                preview = str(result)[:500]
+                                log_msg += f"Dict Preview: {preview}"
+                                if len(str(result)) > 500: log_msg += "..."
+                        # Если результат - строка (например, от get_fias_api_token)
+                        elif isinstance(result, str):
+                            preview = result[:500]
+                            log_msg += f"String Preview: '{preview}'"
+                            if len(result) > 500: log_msg += "..."
+                        # Если результат - None
+                        elif result is None:
+                            log_msg += "None"
+                        # Другие типы
+                        else:
+                            preview = str(result)[:500]
+                            log_msg += f"{type(result).__name__} Preview: {preview}"
+                            if len(str(result)) > 500: log_msg += "..."
+
+                        logger.debug(log_msg)
+
+                    except Exception as log_ex:
+                        logger.warning(f"{log_prefix} Не удалось залогировать результат: {log_ex}")
 
                 return result
 
