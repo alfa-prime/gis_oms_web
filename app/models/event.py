@@ -107,13 +107,13 @@ class Event(BaseModel):
     """
     personal: PersonalData = Field(description="Личные данные пациента")
     hospitalization: HospitalizationData = Field(description="Основные данные госпитализации")
-    service: ServiceData = Field(description="Сервисные данные")
     insurance: Optional[InsuranceData] = Field(default=None, description="Данные страховки")
-
     # --- Поля для данных, которые будем собирать ДОПОЛНИТЕЛЬНО ---
     operations: List[Dict[str, Any]] = Field(default_factory=list, description="Список операций (услуг)")
     diagnoses: List[Dict[str, Any]] = Field(default_factory=list, description="Список диагнозов")
-
+    # --- сервисные данные, всяческие id, флаги и т.д. ---
+    service: ServiceData = Field(description="Сервисные данные")
+    
     @model_validator(mode='before') # noqa
     @classmethod
     def group_flat_data(cls, data: Any) -> Dict[str, Any]:

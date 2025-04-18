@@ -108,8 +108,6 @@ async def get_okato_code(
         # Подавляем ложное предупреждение PyCharm, т.к. get_fias_api_token - это awaitable wrapper
         # noinspection PyCallingNonCallable
         api_token = await get_fias_api_token(http_service)
-
-        logger.debug(f"=== TOKEN ===: {api_token}")
         # noinspection PyCallingNonCallable
         answer = await process_getting_code(
             address_string,
