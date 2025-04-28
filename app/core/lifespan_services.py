@@ -69,7 +69,7 @@ async def load_all_handbooks():
         "referred_by",
         "referred_lpu_departments",
         "referred_organizations",
-        "ensurance_companies",
+        "insurance_companies",
         "rf_subjects"
     ]
     loaded_count = 0
@@ -88,4 +88,4 @@ async def load_all_handbooks():
         logger.info(
             f"Загружено {loaded_count} из {len(handbook_names)} справочников: {list(handbooks_storage.handbooks.keys())}")
     else:
-        logger.error("Ни один справочник не был загружен.")
+        logger.warning("Ни один справочник не был загружен.")

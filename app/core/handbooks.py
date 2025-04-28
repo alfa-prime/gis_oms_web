@@ -7,7 +7,7 @@ import aiofiles
 from app.core import logger, get_settings
 
 settings = get_settings()
-HANDBOOKS_DIR = settings.HANDBOOKS_DIR
+HANDBOOKS_DIR = Path(settings.HANDBOOKS_DIR)
 
 
 class HandbooksStorage:
@@ -26,19 +26,16 @@ async def load_handbook(handbook_name: str) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: Загруженный справочник в формате словаря.
     Raises:
-        FileNotFoundError: Если файл справочника не найден.
-        json.JSONDecodeError: Если файл содержит некорректный JSON.
+        FileNotFoundError: если файл не найден (обработка у вызывающего).
+        json.JSONDecodeError: если JSON некорректен (обработка у вызывающего).
     """
-    handbook_path = str(Path(HANDBOOKS_DIR) / f"{handbook_name}.json")
-    try:
-        async with aiofiles.open(handbook_path, mode="r", encoding="utf-8") as file:
-            content = await file.read()
-            handbook = json.loads(content)
-        logger.info(f"Handbook {handbook_name} loaded successfully")
-        return handbook
-    except FileNotFoundError:
-        logger.error(f"Handbook {handbook_name} not found")
-        raise
-    except json.JSONDecodeError:
-        logger.error(f"Error decoding handbook {handbook_name}")
-        raise
+    handbook_path = HANDBOOKS_DIR / f"{handbook_name}.json"
+    async with aiofiles.open(handbook_path, mode="r", encoding="utf-8") as file:
+        content = await file.read()
+        handbook = json.loads(content)
+    logger.info(f"Handbook {handbook_name} loaded successfully")
+    return handbook
+
+
+
+

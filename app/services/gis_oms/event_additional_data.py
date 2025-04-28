@@ -81,7 +81,9 @@ async def enrich_event_additional_patient_data(
         event.service.insurance_company_territory_id = additional_data.get('OmsSprTerr_id', None)
         event.service.insurance_company_territory_code = additional_data.get('OmsSprTerr_Code', None)
 
+        # Если данные о страховой компании и ее территории существуют, создаем объект и заполняем его данными
         event.insurance = InsuranceData.model_validate(additional_data)
+
         logger.debug(f"Создан и заполнен InsuranceData для event {event.hospitalization.id}")
 
         logger.info(f"Дополнительные данные для пациента {person_id} успешно получены.")

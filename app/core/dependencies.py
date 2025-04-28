@@ -3,6 +3,7 @@ import redis.asyncio as redis
 from fastapi import Request
 
 from app.core import HTTPXClient
+from app.core.handbooks import HandbooksStorage
 
 # Условный импорт для статического анализа и автодополнения
 if TYPE_CHECKING:
@@ -23,3 +24,11 @@ async def get_http_service(request: Request) -> HTTPXClient:
     """
     base_client: 'AsyncClient' = request.app.state.http_client
     return HTTPXClient(client=base_client)
+
+
+
+async def get_handbooks_storage(request: Request) -> HandbooksStorage:
+    """
+    DI: отдаёт глобальный HandbooksStorage из app.state.
+    """
+    return request.app.state.handbooks_storage

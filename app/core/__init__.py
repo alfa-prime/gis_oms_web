@@ -1,8 +1,8 @@
 from .config import get_settings
 from .logger_setup import logger
 from .httpx_client import HTTPXClient
-from .dependencies import get_redis_client, get_http_service
-from .handbooks import handbooks_storage, load_handbook
+from .dependencies import get_redis_client, get_http_service, get_handbooks_storage
+from .handbooks import handbooks_storage, load_handbook, HandbooksStorage
 from .lifespan_services import (
     init_redis_client,
     shutdown_redis_client,
@@ -25,4 +25,6 @@ __all__ = [
     "init_redis_client",
     "shutdown_redis_client",
     "get_redis_client",  # Зависимость для получения клиента Redis
+    "HandbooksStorage",
+    "get_handbooks_storage"
 ]

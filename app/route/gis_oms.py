@@ -2,7 +2,7 @@ from typing import List, Dict, Any, Annotated
 
 from fastapi import APIRouter, Depends, Path
 
-from app.core import get_settings, HTTPXClient, get_http_service, logger
+from app.core import get_settings, HTTPXClient, get_http_service, logger, HandbooksStorage, get_handbooks_storage
 from app.core.decorators import route_handler
 from app.models import PatientSearch, Event
 from app.services import set_cookies, fetch_and_filter, collect_event_data
@@ -58,6 +58,7 @@ async def get_patient(
 async def get_event_details_by_card(
         cookies: Annotated[dict[str, str], Depends(set_cookies)],
         http_service: Annotated[HTTPXClient, Depends(get_http_service)],
+        storage: Annotated[HandbooksStorage, Depends(get_handbooks_storage)],
         card_number: str = Path(..., description="номер карты пациента"),
 ):
     """
@@ -70,6 +71,7 @@ async def get_event_details_by_card(
     result = await collect_event_data(
         cookies=cookies,
         http_service=http_service,
+        handbooks_storage=storage,
         card_number=card_number
     )
     return result

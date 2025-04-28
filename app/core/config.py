@@ -3,7 +3,7 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-BASE_DIR = Path(__file__).resolve().parent.parent  # Корень проекта
+# BASE_DIR = Path(__file__).resolve().parent.parent  # Корень проекта
 
 
 class Settings(BaseSettings):
@@ -54,7 +54,8 @@ class Settings(BaseSettings):
     FIAS_TOKEN_URL: str
 
     model_config = SettingsConfigDict(
-        env_file=BASE_DIR / ".env",  # Явно указываем путь к .env в корне проекта
+        # env_file=BASE_DIR / ".env",  # Явно указываем путь к .env в корне проекта
+        env_file=".env",  # Явно указываем путь к .env в корне проекта
         env_file_encoding="utf-8",
         extra="ignore",
     )
