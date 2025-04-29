@@ -11,8 +11,6 @@ from app.core import (
     init_redis_client,
     shutdown_redis_client,
     load_all_handbooks,
-    handbooks_storage,
-
 )
 from app.route import api_router, web_router
 
@@ -26,8 +24,8 @@ async def lifespan(app: FastAPI):
     logger.info("Запуск приложения...")
     await init_httpx_client(app)
     await init_redis_client(app)
-    await load_all_handbooks()
-    app.state.handbooks_storage = handbooks_storage
+    await load_all_handbooks(app)
+    # app.state.handbooks_storage = handbooks_storage
     logger.info("Инициализация завершена.")
 
     # --- Приложение работает ---

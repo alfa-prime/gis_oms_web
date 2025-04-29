@@ -1,7 +1,7 @@
 import functools
 import time
 import traceback
-from typing import Callable, Awaitable, Any, Type, Dict
+from typing import Callable, Awaitable, Any, Type, Dict, TypeVar, ParamSpec
 
 from fastapi import HTTPException, status, Request
 
@@ -9,8 +9,11 @@ from app.core import logger, get_settings
 
 settings = get_settings()
 
+P = ParamSpec("P")
+R = TypeVar("R")
 
-def log_and_catch(debug: bool = settings.DEBUG_HTTP) ->  Callable[..., Awaitable[Any]]:
+
+def log_and_catch(debug: bool = settings.DEBUG_HTTP) -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Awaitable[R]]]:
     """Декоратор для логирования и перехвата ошибок в асинхронных HTTP-функциях (и не только).
 
     Логирует начало и конец выполнения функции, параметры и ошибки (если есть).
@@ -23,9 +26,9 @@ def log_and_catch(debug: bool = settings.DEBUG_HTTP) ->  Callable[..., Awaitable
         Callable[..., Awaitable[Any]]: Обернутая функция.
     """
 
-    def decorator(func):
+    def decorator(func: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:
         @functools.wraps(func)
-        async def wrapper(*args, **kwargs):
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             # Определяем контекст для лога (имя функции и базовые параметры)
             func_name = func.__name__
             # Пытаемся угадать 'метод' и 'url' из kwargs, если это HTTP-запрос

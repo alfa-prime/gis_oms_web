@@ -1,4 +1,5 @@
-from app.core import HTTPXClient, logger, HandbooksStorage
+from app.core import HTTPXClient, logger, HandbooksStorage, get_settings
+from app.core.decorators import log_and_catch
 from app.services import (
     get_polis_id,
     get_starter_patient_data,
@@ -7,7 +8,10 @@ from app.services import (
     enrich_insurance_data
 )
 
+settings = get_settings()
 
+
+@log_and_catch(debug=settings.DEBUG_HTTP)
 async def collect_event_data(
         cookies: dict[str, str],
         http_service: HTTPXClient,
@@ -28,7 +32,7 @@ async def collect_event_data(
     event = await enrich_event_okato_codes_for_patient_address(event, http_service)
     logger.debug(f"Шаг 4/4: Коды ОКАТО получены")
 
-    event = await enrich_insurance_data(event, handbooks_storage)
+    event = await enrich_insurance_data(event, handbooks_storage, http_service)
 
     # TODO: Добавить вызовы для получения операций, диагнозов и т.д. здесь
     # event = await _enrich_event_operations(cookies, http_service, event)

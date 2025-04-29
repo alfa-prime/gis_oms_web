@@ -3,7 +3,6 @@ from typing import Annotated
 
 import redis.asyncio as redis
 from fastapi import HTTPException, Depends, status
-from httpx import HTTPStatusError, TimeoutException
 from redis.exceptions import RedisError
 
 from app.core import (
@@ -14,13 +13,9 @@ from app.core import (
     get_redis_client
 )
 
-# import aiofiles
-# from aiopath import AsyncPath
 
 settings = get_settings()
 
-# Путь к файлу с cookies
-# COOKIES_FILE: AsyncPath = AsyncPath(settings.COOKIES_FILE)
 
 # Базовый URL для запросов к внешнему сервису
 BASE_URL = settings.BASE_URL

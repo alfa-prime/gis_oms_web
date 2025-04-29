@@ -24,6 +24,7 @@ class PersonalData(BaseModel):
     first_name: str = Field(..., alias="Person_Firname", description="Имя")
     middle_name: Optional[str] = Field(None, alias="Person_Secname", description="Отчество")
     birthday: Optional[str] = Field(None, alias="Person_Birthday", description="Дата рождения в формате DD.MM.YYYY")
+    gender_id: Optional[str] = Field(None, alias="Sex_id", description="ID пола (из loadPersonData [1-м; 2-ж; 3-неопр.])")
     gender_name: Optional[str] = Field(None, alias="Sex_Name", description="Пол (loadPersonData)")
     death_date: Optional[str] = Field(None, alias="Person_deadDT", description="Дата смерти")
     death_time: Optional[str] = Field(None, alias="Person_deadTime", description="Время смерти")
@@ -41,10 +42,11 @@ class PersonalData(BaseModel):
 
 
 class InsuranceData(BaseModel):
-    """Данные страховки."""
-    company_id: Optional[str] = Field(None, alias="OrgSmo_id", description="ID страховой организации")
+    """Данные страховой компании и страхового полиса."""
+    # company_id: Optional[str] = Field(None, alias="OrgSmo_id", description="ID страховой организации")
     company_name: Optional[str] = Field(None, alias="OrgSmo_Name", description="Страховая организация")
-    # evmias polis id = [1 - ОМС(старого образца), 2 - ДМС, 3 - временное свидетельство, 4 - ОМС(нового образца)]
+    territory_code: Optional[str] = Field(None, description="Код территории страхования")
+    code: Optional[str] = Field(None, description="Код СМО")
     polis_type_id: Optional[str] = Field(None, alias="PolisType_id", description="ID типа полиса")
     polis_seria: Optional[str] = Field(None, alias="Polis_Ser", description="Серия полиса")
     polis_number: Optional[str] = Field(None, alias="Polis_Num", description="Номер полиса")
@@ -87,11 +89,6 @@ class ServiceData(BaseModel):
     person_event_id: str = Field(..., alias="PersonEvn_id", description="ID связи пациента с госпитализацией в МИС")
     server_id: str = Field(..., alias="Server_id", description="ID сервера")
     server_pid: Optional[str] = Field(None, alias="Server_pid", description="pid сервера (из loadPersonData)")
-    sex_id: Optional[str] = Field(None, alias="Sex_id", description="ID пола (из loadPersonData [1-м; 2-ж; 3-неопр.])")
-    polis_type_id: Optional[str] = Field(None, alias="PolisType_id", description="ID типа полиса")
-    insurance_company_id: Optional[str] = Field(None, alias="OrgSmo_id", description="ID страховой организации")
-    insurance_company_territory_id: Optional[str] = Field(None, alias="OmsSprTerr_id", description="ID территории")
-    insurance_company_territory_code: Optional[str] = Field(None, alias="OmsSprTerr_Code", description="код территории")
 
     model_config = {
         "populate_by_name": True,

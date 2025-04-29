@@ -1,6 +1,6 @@
 # Этап 1: Сборка зависимостей
 # Используем официальный образ Python 3.10 slim как базовый для builder'а
-FROM python:3.10-slim AS builder
+FROM python:3.10 AS builder
 
 # Устанавливаем рабочую директорию для установки зависимостей
 WORKDIR /install_dir
@@ -24,6 +24,18 @@ RUN pip install --prefix=/install_dir -r requirements.txt
 # Этап 2: Финальный образ приложения
 # Используем тот же базовый образ для минимизации размера
 FROM python:3.10-slim
+
+# 1) Устанавливаем локали и генерим ru_RU.UTF-8
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends locales \
+ && sed -i '/ru_RU.UTF-8/s/^# //g' /etc/locale.gen \
+ && locale-gen ru_RU.UTF-8 \
+ && rm -rf /var/lib/apt/lists/*
+
+# 2) Пробрасываем переменные окружения, чтобы всё в UTF-8
+ENV LANG=ru_RU.UTF-8 \
+    LC_ALL=ru_RU.UTF-8 \
+    PYTHONIOENCODING=utf-8
 
 # Устанавливаем переменную окружения для пути установки (будет использоваться для PATH)
 ENV INSTALL_PATH="/install_dir" \

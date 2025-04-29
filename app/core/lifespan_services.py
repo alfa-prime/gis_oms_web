@@ -2,7 +2,7 @@ import httpx
 import redis.asyncio as redis
 from fastapi import FastAPI
 
-from app.core import logger, get_settings, load_handbook, handbooks_storage
+from app.core import logger, get_settings, load_handbook, HandbooksStorage
 
 settings = get_settings()
 
@@ -61,31 +61,36 @@ async def shutdown_redis_client(app: FastAPI):
             logger.error(f"Ошибка при закрытии Redis клиента: {e}", exc_info=True)
 
 
-async def load_all_handbooks():
-    """Загружает все необходимые справочники."""
-    handbooks_storage.handbooks = {}
-    # Список имен файлов справочников (без .json)
+async def load_all_handbooks(app: FastAPI) -> None:
+    """
+    Загружает все необходимые справочники и сохраняет их в app.state.
+    """
+    storage = HandbooksStorage()
+
     handbook_names = [
         "referred_by",
         "referred_lpu_departments",
         "referred_organizations",
         "insurance_companies",
-        "rf_subjects"
+        "rf_subjects",
     ]
-    loaded_count = 0
+
+    loaded = []
+
     for name in handbook_names:
         try:
-            # Предполагается, что load_handbook находится в app.core.handbooks
-            handbooks_storage.handbooks[name] = await load_handbook(name)
-            logger.debug(f"Справочник '{name}' загружен.")
-            loaded_count += 1
+            handbook = await load_handbook(name)
+            storage.handbooks[name] = handbook
+            logger.debug(f"Справочник '{name}' успешно загружен.")
+            loaded.append(name)
         except FileNotFoundError:
-            logger.warning(f"Файл справочника '{name}.json' не найден.")
+            logger.warning(f"Справочник '{name}.json' не найден.")
         except Exception as e:
-            logger.warning(f"Не удалось загрузить справочник '{name}': {e}")
+            logger.warning(f"Ошибка при загрузке справочника '{name}': {e}")
 
-    if loaded_count > 0:
-        logger.info(
-            f"Загружено {loaded_count} из {len(handbook_names)} справочников: {list(handbooks_storage.handbooks.keys())}")
+    app.state.handbooks_storage = storage
+
+    if loaded:
+        logger.info(f"Загружено {len(loaded)} справочников: {', '.join(loaded)}")
     else:
         logger.warning("Ни один справочник не был загружен.")

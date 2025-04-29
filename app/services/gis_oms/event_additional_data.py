@@ -45,6 +45,7 @@ async def enrich_event_additional_patient_data(
         additional_data = json_response[0]
 
         # --- обогащаем event модель данными из ответа ---
+        event.personal.gender_id = additional_data.get('Sex_id', None)
         event.personal.gender_name = additional_data.get('Sex_Name', None)
         event.personal.phone_number = additional_data.get('Person_Phone', None)
         event.personal.snils = additional_data.get('Person_Snils', None)
@@ -76,10 +77,6 @@ async def enrich_event_additional_patient_data(
             event.personal.actual_address = None  # Убедимся, что он None
 
         event.service.server_pid = additional_data.get('Server_pid', None)
-        event.service.sex_id = additional_data.get('Sex_id', None)
-        event.service.insurance_company_id = additional_data.get('OrgSmo_id', None)
-        event.service.insurance_company_territory_id = additional_data.get('OmsSprTerr_id', None)
-        event.service.insurance_company_territory_code = additional_data.get('OmsSprTerr_Code', None)
 
         # Если данные о страховой компании и ее территории существуют, создаем объект и заполняем его данными
         event.insurance = InsuranceData.model_validate(additional_data)

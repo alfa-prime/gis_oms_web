@@ -12,7 +12,7 @@ from app.core.decorators import log_and_catch
 settings = get_settings()
 
 
-@log_and_catch()
+@log_and_catch(debug=settings.DEBUG_HTTP)
 async def get_fias_api_token(http_service: HTTPXClient) -> str:
     """Получение токена для доступа к АПИ"""
     url = settings.FIAS_TOKEN_URL
@@ -42,7 +42,7 @@ async def get_fias_api_token(http_service: HTTPXClient) -> str:
         )
 
 
-@log_and_catch()
+@log_and_catch(debug=settings.DEBUG_HTTP)
 async def process_getting_code(
         address_string: str,
         api_token: str,

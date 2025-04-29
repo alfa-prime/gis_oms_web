@@ -41,8 +41,10 @@ async def delete_files(files: List[str]) -> None:
             logger.info(f"Временный файл {file} удалён.")
     except Exception as e:
         logger.error(f"Ошибка при удалении файлов: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Ошибка при удалении файлов: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Ошибка при удалении файлов: {str(e)}"
+        )
 
 
 async def is_zip_file(file_path: str) -> bool:
@@ -50,10 +52,8 @@ async def is_zip_file(file_path: str) -> bool:
 
     Args:
         file_path (str): Путь к файлу.
-
     Returns:
         bool: True, если файл — валидный ZIP, иначе False.
-
     Raises:
         OSError: Если файл не удалось открыть.
     """
@@ -65,24 +65,31 @@ async def is_zip_file(file_path: str) -> bool:
 
 def extract_zip_safely(zip_path: str, extract_to: SyncPath) -> SyncPath:
     """Безопасно извлекает единственный файл из ZIP."""
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-        file_list = zip_ref.namelist()
-        logger.debug(f"Список файлов в архиве: {file_list}")
-        if len(file_list) == 0:
-            raise ValueError(f"Архив {zip_path} пуст")
-        if len(file_list) > 1:
-            raise ValueError(f"Архив {zip_path} содержит более одного файла: {file_list}")
+    try:
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            file_list = zip_ref.namelist()
+            logger.debug(f"Список файлов в архиве: {file_list}")
+            if len(file_list) == 0:
+                raise ValueError(f"Архив {zip_path} пуст")
+            if len(file_list) > 1:
+                raise ValueError(f"Архив {zip_path} содержит более одного файла: {file_list}")
 
-        member = file_list[0]
-        member_path = extract_to / member
-        logger.debug(f"Извлекаемый файл: {member}, путь: {member_path}")
+            member = file_list[0]
+            member_path = extract_to / member
+            logger.debug(f"Извлекаемый файл: {member}, путь: {member_path}")
 
-        if not member_path.resolve().is_relative_to(extract_to.resolve()):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Небезопасный путь в ZIP-архиве")
+            if not member_path.resolve().is_relative_to(extract_to.resolve()):
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Небезопасный путь в ZIP-архиве")
 
-        zip_ref.extract(member, extract_to)
-        logger.debug(f"Файл извлечён в: {member_path}")
-        return member_path
+            zip_ref.extract(member, extract_to)
+            logger.debug(f"Файл извлечён в: {member_path}")
+            return member_path
+    except zipfile.BadZipFile:
+        # Ловим повреждённый или невалидный ZIP и переводим в понятный HTTP-ответ
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Архив повреждён или не является ZIP"
+        )
 
 
 async def save_handbook(data: List[Dict] | dict, filename: str) -> None:

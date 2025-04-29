@@ -44,7 +44,6 @@ async def get_polis_id(cookies, http_service, event: Event):
 
         # --- обогащаем event модель данными из ответа ---
         event.insurance.polis_type_id = raw_data.get("PolisType_id", None)
-        event.service.polis_type_id = raw_data.get("PolisType_id", None)
 
         return event
 
