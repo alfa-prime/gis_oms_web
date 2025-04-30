@@ -130,23 +130,3 @@ async def get_fias_okato(
     """Получение кода ОКАТО по адресу"""
     result = await get_okato_code(address, http_service)
     return result
-
-
-# @router.post("/test")
-# async def test(
-#         http_service: Annotated[HTTPXClient, Depends(get_http_service)]
-# ):
-#     url = "https://fias.nalog.ru/User/Login"
-#     data = {
-#         "Login": "uglin",
-#         "Password": "Meat4cat&@",
-#         "KeepLoggedIn": True
-#     }
-#
-#     response = await http_service.fetch(
-#         url=url,
-#         method="POST",
-#         data=data,
-#     )
-#
-#     return response

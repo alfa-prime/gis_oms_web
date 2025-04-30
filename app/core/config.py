@@ -1,9 +1,6 @@
 from functools import lru_cache
-from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
-# BASE_DIR = Path(__file__).resolve().parent.parent  # Корень проекта
 
 
 class Settings(BaseSettings):
@@ -32,14 +29,14 @@ class Settings(BaseSettings):
 
     # === Redis Configuration ===
     REDIS_HOST: str
-    REDIS_PORT: int # Порт - это число
-    REDIS_DB: int   # Номер базы - это число
+    REDIS_PORT: int  # Порт - это число
+    REDIS_DB: int  # Номер базы - это число
     REDIS_COOKIES_KEY: str
-    REDIS_COOKIES_TTL: int # TTL - это число (секунды)
+    REDIS_COOKIES_TTL: int  # TTL - это число (секунды)
 
     # === Local File Paths ===
-    HANDBOOKS_DIR: str # Можно оставить строкой или сделать Path
-    TEMP_DIR: str      # Можно оставить строкой или сделать Path
+    HANDBOOKS_DIR: str  # Можно оставить строкой или сделать Path
+    TEMP_DIR: str  # Можно оставить строкой или сделать Path
 
     # === Logging & Debugging ===
     LOGS_LEVEL: str
@@ -54,7 +51,6 @@ class Settings(BaseSettings):
     FIAS_TOKEN_URL: str
 
     model_config = SettingsConfigDict(
-        # env_file=BASE_DIR / ".env",  # Явно указываем путь к .env в корне проекта
         env_file=".env",  # Явно указываем путь к .env в корне проекта
         env_file_encoding="utf-8",
         extra="ignore",

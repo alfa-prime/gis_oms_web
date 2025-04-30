@@ -24,7 +24,7 @@ __all__ = [
     "shutdown_httpx_client",
     "init_redis_client",
     "shutdown_redis_client",
-    "get_redis_client",  # Зависимость для получения клиента Redis
+    "get_redis_client",
     "HandbooksStorage",
     "get_handbooks_storage"
 ]

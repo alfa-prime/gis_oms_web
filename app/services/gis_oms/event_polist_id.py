@@ -43,7 +43,12 @@ async def get_polis_id(cookies, http_service, event: Event):
         raw_data = json_response[0]
 
         # --- обогащаем event модель данными из ответа ---
-        event.insurance.polis_type_id = raw_data.get("PolisType_id", None)
+        raw_id = raw_data.get("PolisType_id", None)
+        if raw_id == "4":
+            event.insurance.polis_type_id = "3"
+        else:
+            logger.warning("Недопустимый тип полиса.")
+            event.insurance.polis_type_id = f"Недопустимый тип полиса: {raw_id}"
 
         return event
 

@@ -13,9 +13,7 @@ from app.core import (
     get_redis_client
 )
 
-
 settings = get_settings()
-
 
 # Базовый URL для запросов к внешнему сервису
 BASE_URL = settings.BASE_URL
@@ -232,13 +230,13 @@ async def check_existing_cookies(redis_client: redis.Redis, http_service: HTTPXC
         return False
     except Exception as e:
         logger.error(f"Неожиданная ошибка при проверке существующих cookies: {e}", exc_info=True)
-        return False # Считаем невалидными при любой ошибке проверки
+        return False  # Считаем невалидными при любой ошибке проверки
 
 
 async def set_cookies(
-    # Внедряем зависимости через Annotated
-    http_service: Annotated[HTTPXClient, Depends(get_http_service)],
-    redis_client: Annotated[redis.Redis, Depends(get_redis_client)]
+        # Внедряем зависимости через Annotated
+        http_service: Annotated[HTTPXClient, Depends(get_http_service)],
+        redis_client: Annotated[redis.Redis, Depends(get_redis_client)]
 ) -> dict:
     """
     Основная FastAPI зависимость для получения действительных cookies.
@@ -254,20 +252,20 @@ async def set_cookies(
             cookies = await load_cookies_from_redis(redis_client=redis_client)
             # Доп. проверка на случай, если cookies исчезли между проверкой и загрузкой
             if not cookies:
-                 logger.warning("cookies исчезли из Redis после проверки валидности. Получаем новые.")
-                 cookies = await get_new_cookies(http_service=http_service, redis_client=redis_client)
+                logger.warning("cookies исчезли из Redis после проверки валидности. Получаем новые.")
+                cookies = await get_new_cookies(http_service=http_service, redis_client=redis_client)
         else:
             logger.info("Существующие cookies невалидны или отсутствуют. Получаем новые.")
             # Передаем зависимости явно в get_new_cookies
             cookies = await get_new_cookies(http_service=http_service, redis_client=redis_client)
 
         if not cookies:
-             # Эта ситуация не должна произойти, если get_new_cookies работает правильно
-             logger.critical("Не удалось получить или загрузить cookies после всех попыток!")
-             raise HTTPException(
-                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                 detail="Не удалось установить сессию ЕВМИАС"
-             )
+            # Эта ситуация не должна произойти, если get_new_cookies работает правильно
+            logger.critical("Не удалось получить или загрузить cookies после всех попыток!")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Не удалось установить сессию ЕВМИАС"
+            )
 
         return cookies
 
