@@ -2,24 +2,35 @@ from fastapi import HTTPException, status
 from httpx import HTTPStatusError, RequestError
 
 from app.core import logger, get_settings, HTTPXClient
-from app.models import Event
+from app.models import Event, EventSearch
 
 settings = get_settings()
 
 
 async def get_starter_patient_data(
-        cookies: dict[str, str], http_service: HTTPXClient, card_number: str
+        cookies: dict[str, str],
+        http_service: HTTPXClient,
+        event_search_data: EventSearch,
 ) -> Event:
     """
     Выполняет поиск в ЕВМИАС по номеру карты для получения стартовых данных госпитализации.
     Возвращает первый найденный результат.
     Выбрасывает HTTPException при ошибках API, неверном формате ответа или если данные не найдены.
     """
+    card_number = event_search_data.card_number
     logger.debug(f"Запрос стартовых данных по номеру карты: {card_number}")
     url = settings.BASE_URL
     headers = {"Origin": settings.BASE_HEADERS_ORIGIN_URL, "Referer": settings.BASE_HEADERS_REFERER_URL}
     params = {"c": "Search", "m": "searchData"}
-    data = {"EvnPS_NumCard": card_number, "SearchFormType": "EvnPS"}
+    data = {
+        "EvnPS_NumCard": card_number,
+        "SearchFormType": "EvnPS",
+        "Person_Surname": event_search_data.last_name,
+        # Добавляем опциональные поля, если они не пустые, используя := и **
+        **({"Person_Firname": first_name} if (first_name := event_search_data.first_name) else {}),
+        **({"Person_Secname": middle_name} if (middle_name := event_search_data.middle_name) else {}),
+        **({"Person_Birthday": birthday} if (birthday := event_search_data.birthday) else {}),
+    }
 
     try:
         response = await http_service.fetch(

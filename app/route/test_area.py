@@ -100,6 +100,34 @@ async def _get_polis(
     return response.get("json", {})
 
 
+@router.post("/evn_section_grid")
+async def _get_polis(
+        cookies: Annotated[dict[str, str], Depends(set_cookies)],
+        http_service: Annotated[HTTPXClient, Depends(get_http_service)],
+        event_id: str = Body(..., description="ID госпитализации"),
+):
+    url = BASE_URL
+    headers = HEADERS
+
+    params = {"c": "EvnSection", "m": "loadEvnSectionGrid"}
+
+    data = {
+        "EvnSection_pid": event_id,
+    }
+
+    response = await http_service.fetch(
+        url=url,
+        method="POST",
+        cookies=cookies,
+        headers=headers,
+        params=params,
+        data=data,
+        raise_for_status=True  # fetch выкинет HTTPStatusError если не 2xx
+    )
+
+    return response.get("json", {})
+
+
 @router.get("/fias-token")
 async def _get_fias_token(http_service: Annotated[HTTPXClient, Depends(get_http_service)]):
     """

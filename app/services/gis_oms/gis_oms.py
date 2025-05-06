@@ -89,7 +89,7 @@ async def fetch_and_filter(
     data = {
         "SearchFormType": "EvnPS",
         "Person_Surname": patient_search_data.last_name,
-        "PayType_id": "3010101000000048",
+        "PayType_id": 3010101000000048,
         "Okei_id": "100",
         "Date_Type": "1",
         "LpuBuilding_cid": "3010101000000467",

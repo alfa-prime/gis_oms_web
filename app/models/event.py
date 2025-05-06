@@ -82,6 +82,15 @@ class HospitalizationData(BaseModel):
     }
 
 
+class HospitalReferralData(BaseModel):
+    """ Данные по направлению."""
+    id: str = Field(..., alias="EvnPS_id", description="ID госпитализации в МИС")
+    referral_id: Optional[str] = Field(None, description="ID направления в МИС")
+    # start_date: str = Field(..., alias="EvnPS_setDate", description="Дата направления")
+    # department_name: Optional[str] = Field(None, alias="LpuSection_Name", description="Отделение")
+    # profile_name: Optional[str] = Field(None, alias="LpuSectionProfile_Name", description="Профиль отделения")
+
+
 class ServiceData(BaseModel):
     """Сервисные идентификаторы."""
     event_id: str = Field(..., alias="EvnPS_id", description="ID госпитализации в МИС")
