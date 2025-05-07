@@ -14,7 +14,9 @@ from .gis_oms.event_okato import enrich_event_okato_codes_for_patient_address
 from .gis_oms.event_insurance import enrich_insurance_data
 from .gis_oms.event_hospital_referral import enrich_event_hospital_referral
 from .gis_oms.collect_event_data import collect_event_data_by_card_number, collect_event_data_by_fio_and_card_number
+
 from .handbooks.nsi_ffoms import fetch_and_process_handbook
+from .handbooks.sync_evmias import sync_referred_by
 
 from .fias.fias import get_okato_code
 
@@ -36,4 +38,5 @@ __all__ = [
     "enrich_event_okato_codes_for_patient_address",
     "enrich_insurance_data",
     "enrich_event_hospital_referral",
+    "sync_referred_by",
 ]

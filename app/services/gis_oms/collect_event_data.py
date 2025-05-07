@@ -71,7 +71,7 @@ async def collect_event_data_by_fio_and_card_number(
     event = await enrich_event_okato_codes_for_patient_address(event, http_service)
     logger.debug(f"Шаг 4: Коды ОКАТО получены")
 
-    event = await enrich_insurance_data(event, handbooks_storage, http_service)
+    event = await enrich_insurance_data(event, handbooks_storage)
     logger.debug(f"Шаг 5: Данные страховки получены")
 
     event = await enrich_event_hospital_referral(event, handbooks_storage, cookies, http_service)

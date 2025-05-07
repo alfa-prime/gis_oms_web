@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Annotated
 
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from app.core import logger, HTTPXClient, get_settings, get_http_service, HandbooksStorage
 from app.services import set_cookies, save_handbook
-from app.core import logger, HTTPXClient, get_settings, get_http_service
+from app.services.handbooks.sync_evmias import sync_referred_by
 
 settings = get_settings()
 
@@ -19,58 +21,94 @@ LPU_ID = settings.LPU_ID
 router = APIRouter(prefix="/evmias_handbooks", tags=["Справочники ЕВМИАС"])
 
 
-@router.get("/referred_by")
+@router.get("/referred_by", summary="Обновить справочник 'Кем направлен'")
 async def get_referred_by_handbook(
-        cookies: dict = Depends(set_cookies),
-        http_service: HTTPXClient = Depends(get_http_service)
+        request: Request, # для доступа к app.state
+        cookies: Annotated[dict[str, str], Depends(set_cookies)],
+        http_service: Annotated[HTTPXClient, Depends(get_http_service)]
 ):
-    """Получаем справочник с типами кто направил пациента (другая МО и прочее)"""
-    try:
-        logger.debug("Запрос справочника 'referred_by' начат")
-        url = BASE_URL
-        headers = HEADERS
-        params = {
-            "c": "MongoDBWork",
-            "m": "getData",
-            "object": "SFPrehospDirect",  # noqau
-            "SFPrehospDirect_id": "",
-            "SFPrehospDirect_Code": "",
-            "SFPrehospDirect_Name": "",
-            "SFPrehospDirect_SysNick": "",
-            "remove": "",
-            "intersection": "",
-            "object": "SFPrehospDirect"  # noqau
-        }
+    """
+    Инициирует обновление справочника 'Кем направлен' (referred_by).
+    Данные скачиваются, сохраняются на диск и обновляются в памяти.
+    """
 
-        response = await http_service.fetch(
-            url=url,
-            method="POST",
-            cookies=cookies,
-            params=params,
-            headers=headers
+    # Получаем экземпляр HandbooksStorage из app.state
+    # Предполагаем, что он был инициализирован в lifespan
+    if not hasattr(request.app.state, 'handbooks_storage'):
+        logger.error("HandbooksStorage не инициализирован в app.state. Невозможно обновить справочник.")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Хранилище справочников не инициализировано."
+        )
+    handbooks_storage: HandbooksStorage = request.app.state.handbooks_storage
+
+    logger.info("Запрос на обновление справочника 'referred_by' через API.")
+    success = await sync_referred_by(
+        http_client=http_service,
+        cookies=cookies,
+        handbooks_storage=handbooks_storage
+    )
+
+    if success:
+        return {
+            "message": "Справочник 'referred_by' успешно обновлен.",
+            "data": handbooks_storage.handbooks.get("referred_by")
+        }
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Не удалось обновить справочник 'referred_by'."
         )
 
-        result = {}
-        for entry in response['json']:
-            id = entry.get("SFPrehospDirect_id", "")
-            name = entry.get("SFPrehospDirect_Name", "")
-            code = entry.get("SFPrehospDirect_Code", "")
-            nick = entry.get("SFPrehospDirect_SysNick", "")
 
-            if id:
-                result[id] = {
-                    "code": code,
-                    "name": name,
-                    "nick": nick
-                }
 
-        await save_handbook(result, "referred_by.json")
-        logger.info(f"Справочник 'referred_by' сохранен в {HANDBOOKS_DIR}/referred_by.json")
-        return result
 
-    except Exception as e:
-        logger.error(f"Ошибка в get_referred_by_handbook: {e}")
-        raise HTTPException(status_code=500, detail=f"Ошибка получения справочника 'referred_by': {e}")
+    # try:
+    #     logger.debug("Запрос справочника 'referred_by' начат")
+    #     url = BASE_URL
+    #     headers = HEADERS
+    #     params = {
+    #         "c": "MongoDBWork",
+    #         "m": "getData",
+    #         "object": "SFPrehospDirect",  # noqau
+    #         "SFPrehospDirect_id": "",
+    #         "SFPrehospDirect_Code": "",
+    #         "SFPrehospDirect_Name": "",
+    #         "SFPrehospDirect_SysNick": "",
+    #         "remove": "",
+    #         "intersection": "",
+    #         "object": "SFPrehospDirect"  # noqau
+    #     }
+    #
+    #     response = await http_service.fetch(
+    #         url=url,
+    #         method="POST",
+    #         cookies=cookies,
+    #         params=params,
+    #         headers=headers
+    #     )
+    #
+    #     result = {}
+    #     for entry in response['json']:
+    #         id = entry.get("SFPrehospDirect_id", "")
+    #         name = entry.get("SFPrehospDirect_Name", "")
+    #         code = entry.get("SFPrehospDirect_Code", "")
+    #         nick = entry.get("SFPrehospDirect_SysNick", "")
+    #
+    #         if id:
+    #             result[id] = {
+    #                 "code": code,
+    #                 "name": name,
+    #                 "nick": nick
+    #             }
+    #
+    #     await save_handbook(result, "referred_by.json")
+    #     logger.info(f"Справочник 'referred_by' сохранен в {HANDBOOKS_DIR}/referred_by.json")
+    #     return result
+    #
+    # except Exception as e:
+    #     logger.error(f"Ошибка в get_referred_by_handbook: {e}")
+    #     raise HTTPException(status_code=500, detail=f"Ошибка получения справочника 'referred_by': {e}")
 
 
 @router.get("/lpu_departments")

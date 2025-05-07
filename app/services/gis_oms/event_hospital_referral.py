@@ -53,11 +53,6 @@ async def enrich_event_hospital_referral(
         referral_org_evmias_id = raw_referral_data.get("Org_did")
 
         handbook_referred_by = handbooks_storage.handbooks.get("referred_by", None)
-        if handbook_referred_by is None:
-            logger.debug("Справочник 'referred_by' не найден. Пытаюсь загрузить...")
-            handbook_referred_by = await get_referred_by_handbook(cookies, http_service)
-            handbooks_storage.handbooks["referred_by"] = handbook_referred_by
-
         referred_by = handbook_referred_by.get(referred_by_id, None)
 
         logger.debug(f"REFERRED_BY_ID: {referred_by}")
