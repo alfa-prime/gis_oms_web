@@ -12,7 +12,8 @@ async def enrich_insurance_data(
 ) -> Event:
     company_name = event.insurance.company_name
     handbook = handbooks_storage.handbooks.get("insurance_companies", None)
-    company_data = handbook.get(company_name, {})[0]
+    handbook_data = handbook.get('data')
+    company_data = handbook_data.get(company_name, {})[0]
     event.insurance.territory_code = company_data.get('TF_OKATO', '')
     event.insurance.code = company_data.get('smocod', '')
     return event

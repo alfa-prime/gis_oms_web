@@ -1,8 +1,14 @@
-from httpx import HTTPStatusError, RequestError
 from fastapi import status, HTTPException
+from httpx import HTTPStatusError, RequestError
+
 from app.core import HTTPXClient, get_settings, logger, HandbooksStorage
+# маппер направивших на госпитализацию медицинских организаций, которые нельзя однозначно получить из справочника
+from app.core.mappings import referred_org_map
 from app.models import Event
-from app.services.handbooks.evmias import get_referred_by_handbook
+
+# константы для описания источника направления
+REFERRED_BY_OTHER_MO = "2"
+REFERRED_BY_SAME_MO = "1"
 
 settings = get_settings()
 BASE_URL = settings.BASE_URL
@@ -45,17 +51,49 @@ async def enrich_event_hospital_referral(
                 detail=f"Некорректный ответ от ЕВМИАС (loadEvnPSEditForm) для события {event_id}"
             )
 
-        raw_referral_data = json_response[0]
+        # получили данные о направлении на госпитализацию в виде словаря
+        raw_referred_data = json_response[0]
+        # получаем id кем направлен (другая МО или сама МО)
+        referred_by_id = str(raw_referred_data.get("PrehospDirect_id", None))
+        referred_org_id = raw_referred_data.get("Org_did")
 
-        referred_by_id = raw_referral_data.get("PrehospDirect_id")
-        referral_number = raw_referral_data.get("EvnDirection_Num")
-        referral_date = raw_referral_data.get("EvnDirection_setDate")
-        referral_org_evmias_id = raw_referral_data.get("Org_did")
+        # справочник направивших на госпитализацию организаций (ЕВМИАС)
+        referred_data = handbooks_storage.handbooks.get("referred_organizations").get(referred_org_id)
+        # справочник МО (от фонда)
+        medical_organizations = handbooks_storage.handbooks.get("medical_organizations").get("data")
 
-        handbook_referred_by = handbooks_storage.handbooks.get("referred_by", None)
-        referred_by = handbook_referred_by.get(referred_by_id, None)
+        org_evmias_name = referred_data.get("name")
+        org_evmias_token = referred_data.get("token")
 
-        logger.debug(f"REFERRED_BY_ID: {referred_by}")
+        # если направила другая МО
+        if referred_by_id == REFERRED_BY_OTHER_MO:
+            map_keys = referred_org_map.keys()
+            handbook_keys = medical_organizations.keys()
+
+            if org_evmias_name in map_keys:
+                org_map = referred_org_map.get(org_evmias_name)
+                org_name = org_map.get("name")
+                org_nick = org_map.get("nick")
+                org_token = org_map.get("token")
+                org_code = org_map.get("code")[0:8]
+
+            elif (org_evmias_name not in map_keys) and (org_evmias_token in handbook_keys):
+                org_handbook = medical_organizations.get(org_evmias_token)[0]
+                org_name = org_handbook.get("NAM_MOP")
+                org_nick = org_handbook.get("NAM_MOK")
+                org_code = org_handbook.get("IDMO")
+                org_token = org_evmias_token
+
+            else:
+                logger.warning(
+                    f"Не удалось найти справочную информацию о направившей организации: "
+                    f"{org_evmias_name} ({org_evmias_token}).")
+
+        # todo: удалить после отладки
+        logger.debug(f"org_name: {org_name}, org_nick: {org_nick}, org_token: {org_token}, org_code: {org_code}")
+
+        # todo: добавить эти сведения в event
+        # todo: если направила сама МО
 
         return event
 

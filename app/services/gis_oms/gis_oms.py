@@ -61,7 +61,8 @@ async def get_patient_operations(
             # Возвращаем найденные операции (может быть пустым списком)
             return operations_found
         else:
-            logger.warning(f"Ответ для услуг event_id={event_id} не содержит валидный JSON список: {event_data}")
+            logger.warning(f"Для event_id={event_id} нет ни одной услуги")
+            # logger.warning(f"Ответ для услуг event_id={event_id} не содержит валидный JSON список: {event_data}")
             return None  # Ошибка формата ответа
 
     except HTTPException as e:

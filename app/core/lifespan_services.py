@@ -6,7 +6,7 @@ import redis.asyncio as redis
 from fastapi import FastAPI
 
 from app.core import logger, get_settings, load_handbook, HandbooksStorage, HTTPXClient
-from app.services.handbooks.sync_evmias import sync_referred_by
+from app.services.handbooks.sync_evmias import sync_referred_by, sync_referred_org
 from app.services.cookies.cookies import get_new_cookies, check_existing_cookies, load_cookies_from_redis
 from app.services.handbooks.nsi_ffoms_maps import NSI_HANDBOOKS_MAP
 from app.services.handbooks.nsi_ffoms import fetch_and_process_handbook
@@ -100,13 +100,16 @@ async def load_all_handbooks(app: FastAPI) -> None:
     # Карта для ЕВМИАС справочников (имя_ключа -> сервисная_функция)
     EVMIAS_SYNC_MAP = {
         "referred_by": sync_referred_by,
+        "referred_organizations": sync_referred_org,
         # "lpu_departments": sync_lpu_departments,
     }
 
     # Список NSI кодов, которые нужно синхронизировать/загрузить при старте
     NSI_CODES_TO_PROCESS = [
         "F002",  # страховые компании
+        "F032",  # медицинские организации
         "V005",  # Классификатор пола
+
     ]
 
     # Определяем все ожидаемые ключи в storage (ЕВМИАС + НСИ)
@@ -160,7 +163,13 @@ async def load_all_handbooks(app: FastAPI) -> None:
                 if evmias_cookies:  # Если куки есть (или были получены успешно)
                     logger.info(f"Lifespan: Планирую синхронизацию ЕВМИАС справочника '{key_name}'...")
                     tasks_to_run_in_parallel.append(
-                        service_func(http_client=http_client, cookies=evmias_cookies, handbooks_storage=handbooks_storage))
+                        service_func(
+                            http_client=http_client,
+                            cookies=evmias_cookies,
+                            handbooks_storage=handbooks_storage,
+                            handbook_name=key_name,
+                        )
+                    )
                     active_sync_tasks_info.append({"name": key_name, "type": "evmias"})
                 else:
                     logger.warning(f"Пропуск синхронизации ЕВМИАС справочника '{key_name}' из-за отсутствия cookies.")
@@ -233,43 +242,3 @@ async def load_all_handbooks(app: FastAPI) -> None:
         f"Успешно синхронизировано сервисами: {successful_syncs_count}. "
         f"Всего в памяти: {final_in_memory_count} из {len(expected_storage_keys)} ожидаемых."
     )
-
-
-
-
-
-
-
-# async def load_all_handbooks(app: FastAPI) -> None:
-#     """
-#     Загружает все необходимые справочники и сохраняет их в app.state.
-#     """
-#     storage = HandbooksStorage()
-#
-#     handbook_names = [
-#         "referred_by",
-#         "referred_lpu_departments",
-#         "referred_organizations",
-#         "insurance_companies",
-#         "rf_subjects",
-#     ]
-#
-#     loaded = []
-#
-#     for name in handbook_names:
-#         try:
-#             handbook = await load_handbook(name)
-#             storage.handbooks[name] = handbook
-#             logger.debug(f"Справочник '{name}' успешно загружен.")
-#             loaded.append(name)
-#         except FileNotFoundError:
-#             logger.warning(f"Справочник '{name}.json' не найден.")
-#         except Exception as e:
-#             logger.warning(f"Ошибка при загрузке справочника '{name}': {e}")
-#
-#     app.state.handbooks_storage = storage
-#
-#     if loaded:
-#         logger.info(f"Загружено {len(loaded)} справочников: {', '.join(loaded)}")
-#     else:
-#         logger.warning("Ни один справочник не был загружен.")
