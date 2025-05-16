@@ -1,4 +1,4 @@
-from app.core import HandbooksStorage, get_settings
+from app.core import HandbooksStorage, get_settings, logger
 from app.core.decorators import log_and_catch
 from app.models import Event
 

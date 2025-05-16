@@ -84,9 +84,12 @@ class HospitalizationData(BaseModel):
 
 class HospitalReferralData(BaseModel):
     """ Данные по направлению."""
-    id: str = Field(..., alias="EvnPS_id", description="ID госпитализации в МИС")
-    referral_id: Optional[str] = Field(None, description="ID направления в МИС")
-    # start_date: str = Field(..., alias="EvnPS_setDate", description="Дата направления")
+    date: Optional[str] = Field(None, description="Дата направления")
+    who_direct: Optional[str] = Field(None, description="Кто направил")
+    org_name: Optional[str] = Field(None, description="Название организации")
+    org_nick: Optional[str] = Field(None, description="Название организации в краткой форме")
+    org_code: Optional[str] = Field(None, description="Код организации (F032 - справочник фонда)")
+    org_token: Optional[str] = Field(None, description="Токен организации (F032 - справочник фонда)")
     # department_name: Optional[str] = Field(None, alias="LpuSection_Name", description="Отделение")
     # profile_name: Optional[str] = Field(None, alias="LpuSectionProfile_Name", description="Профиль отделения")
 
@@ -114,6 +117,7 @@ class Event(BaseModel):
     personal: PersonalData = Field(description="Личные данные пациента")
     hospitalization: HospitalizationData = Field(description="Основные данные госпитализации")
     insurance: Optional[InsuranceData] = Field(default=None, description="Данные страховки")
+    referral: Optional[HospitalReferralData] = Field(default=None, description="Данные по направлению")
     # --- Поля для данных, которые будем собирать ДОПОЛНИТЕЛЬНО ---
     operations: List[Dict[str, Any]] = Field(default_factory=list, description="Список операций (услуг)")
     diagnoses: List[Dict[str, Any]] = Field(default_factory=list, description="Список диагнозов")
@@ -138,6 +142,7 @@ class Event(BaseModel):
             "hospitalization": data.copy(),
             "service": data.copy(),
             "insurance": data.copy(),  # Если страховка не найдена, используем пустой словарь
+            "referral": data.copy(),  # Если направление не найдено, используем пустой словарь
             # Переносим поля для доп. данных, если они вдруг уже есть во входных данных
             "operations": data.get("operations", []),
             "diagnoses": data.get("diagnoses", [])

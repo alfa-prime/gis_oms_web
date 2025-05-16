@@ -97,14 +97,14 @@ async def load_all_handbooks(app: FastAPI) -> None:
 
     evmias_cookies = None  # Будут получены, если нужны
 
-    # Карта для ЕВМИАС справочников (имя_ключа -> сервисная_функция)
+    # Карта для ЕВМИАС справочников (имя_справочника: сервисная_функция)
     EVMIAS_SYNC_MAP = {
         "referred_by": sync_referred_by,
         "referred_organizations": sync_referred_org,
         # "lpu_departments": sync_lpu_departments,
     }
 
-    # Список NSI кодов, которые нужно синхронизировать/загрузить при старте
+    # Список кодов справочников НСИ, которые нужно синхронизировать/загрузить при старте
     NSI_CODES_TO_PROCESS = [
         "F002",  # страховые компании
         "F032",  # медицинские организации
