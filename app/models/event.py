@@ -11,7 +11,7 @@ class AddressData(BaseModel):
     okato_code: Optional[str] = Field(None, description="Код ОКАТО, полученный из ФИАС")
 
     model_config = {
-        "extra": "ignore" # Игнорируем лишние поля при инициализации
+        "extra": "ignore"  # Игнорируем лишние поля при инициализации
     }
 
 
@@ -24,7 +24,8 @@ class PersonalData(BaseModel):
     first_name: str = Field(..., alias="Person_Firname", description="Имя")
     middle_name: Optional[str] = Field(None, alias="Person_Secname", description="Отчество")
     birthday: Optional[str] = Field(None, alias="Person_Birthday", description="Дата рождения в формате DD.MM.YYYY")
-    gender_id: Optional[str] = Field(None, alias="Sex_id", description="ID пола (из loadPersonData [1-м; 2-ж; 3-неопр.])")
+    gender_id: Optional[str] = Field(None, alias="Sex_id",
+                                     description="ID пола (из loadPersonData [1-м; 2-ж; 3-неопр.])")
     gender_name: Optional[str] = Field(None, alias="Sex_Name", description="Пол (loadPersonData)")
     death_date: Optional[str] = Field(None, alias="Person_deadDT", description="Дата смерти")
     death_time: Optional[str] = Field(None, alias="Person_deadTime", description="Время смерти")
@@ -84,12 +85,24 @@ class HospitalizationData(BaseModel):
 
 class HospitalReferralData(BaseModel):
     """ Данные по направлению."""
-    date: Optional[str] = Field(None, description="Дата направления")
+    id: Optional[str] = Field(None, description="ID направления")
+    talon_date: Optional[str] = Field(None, description="Дата направления")
+    talon_number: Optional[str] = Field(None, description="Номер направления")
     who_direct: Optional[str] = Field(None, description="Кто направил")
     org_name: Optional[str] = Field(None, description="Название организации")
     org_nick: Optional[str] = Field(None, description="Название организации в краткой форме")
     org_code: Optional[str] = Field(None, description="Код организации (F032 - справочник фонда)")
     org_token: Optional[str] = Field(None, description="Токен организации (F032 - справочник фонда)")
+    medical_care_condition_id: Optional[str] = Field(None, description="Условия оказания медицинской помощи (V006)")
+    medical_care_condition_name: Optional[str] = Field(None, description="Условия оказания медицинской помощи (V006)")
+    medical_care_type_id: Optional[str] = Field("31", description="Вид медицинской помощи (V008)")
+    medical_care_type_name: Optional[str] = Field("специализированная медицинская помощь",
+                                                  description="Вид медицинской помощи (V008)")
+    medical_care_form_id: Optional[str] = Field(None, description="Форма оказания медицинской помощи (V014)")
+    medical_care_form_name: Optional[str] = Field(None, description="Форма оказания медицинской помощи (V014)")
+    medical_care_profile_id: Optional[str] = Field(None, description="Профиль медицинской помощи (V002)")
+    medical_care_profile_name: Optional[str] = Field(None, description="Профиль медицинской помощи (V002)")
+
     # department_name: Optional[str] = Field(None, alias="LpuSection_Name", description="Отделение")
     # profile_name: Optional[str] = Field(None, alias="LpuSectionProfile_Name", description="Профиль отделения")
 
@@ -123,8 +136,8 @@ class Event(BaseModel):
     diagnoses: List[Dict[str, Any]] = Field(default_factory=list, description="Список диагнозов")
     # --- сервисные данные, всяческие id, флаги и т.д. ---
     service: ServiceData = Field(description="Сервисные данные")
-    
-    @model_validator(mode='before') # noqa
+
+    @model_validator(mode='before')  # noqa
     @classmethod
     def group_flat_data(cls, data: Any) -> Dict[str, Any]:
         """

@@ -15,6 +15,33 @@ FIAS_API_BASE_URL = settings.FIAS_API_BASE_URL
 router = APIRouter(prefix="/test", tags=["Тестовые запросы"])
 
 
+
+@router.get(
+    path="/test",
+)
+async def smo_name_by_id(
+        cookies: Annotated[dict[str, str], Depends(set_cookies)],
+        http_service: Annotated[HTTPXClient, Depends(get_http_service)],
+):
+    url = BASE_URL
+    headers = HEADERS
+    params = {"c": "Stick", "m": "loadEvnStickGrid"}
+    data = {
+        "EvnStick_pid": "3010101196271827",
+    }
+
+    response = await http_service.fetch(
+        url=url,
+        method="POST",
+        cookies=cookies,
+        headers=headers,
+        params=params,
+        data=data,
+    )
+    return response.get("json", {})
+
+
+
 @router.get(
     path="/person_data/{person_id}",
     summary="Получение базовой информации по id пациента"
@@ -87,7 +114,7 @@ async def _get_fias_token(http_service: Annotated[HTTPXClient, Depends(get_http_
         url=url,
         method="GET",
         params=params,
-        raise_for_status=True  # fetch выкинет HTTPStatusError если не 2xx
+        # raise_for_status=True  # fetch выкинет HTTPStatusError если не 2xx
     )
     result = response.get("json")["Token"]
     return result

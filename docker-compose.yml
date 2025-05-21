@@ -34,6 +34,10 @@ services:
       # Монтируем логи наружу, чтобы они сохранялись на хосте
       - ./logs:/code/logs
     restart: unless-stopped
+    dns:
+      - 8.8.8.8 # Заменить на свой DNS, если не работает
+      - 1.1.1.1
+      # - 77.88.8.8 # Yandex DNS
 
 # Определяем именованный volume для данных Redis
 volumes:

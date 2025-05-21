@@ -4,7 +4,8 @@ from .tools.tools import (
     delete_files,
     is_zip_file,
     extract_zip_safely,
-    save_handbook
+    save_handbook,
+    get_handbook_payload
 )
 from .gis_oms.gis_oms import fetch_and_filter, get_patient_operations
 from .gis_oms.event_polist_id import get_polis_id
@@ -40,5 +41,6 @@ __all__ = [
     "enrich_event_hospital_referral",
     "sync_referred_by",
     "sync_referred_org",
-    "get_patient_operations"
+    "get_patient_operations",
+    "get_handbook_payload"
 ]

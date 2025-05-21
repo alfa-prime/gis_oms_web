@@ -23,9 +23,8 @@ async def get_fias_api_token(http_service: HTTPXClient) -> str:
         url=url,
         method="GET",
         params=params,
-        raise_for_status=True
+        # raise_for_status=False
     )
-
     try:
         token = response["json"]["Token"]
         if not isinstance(token, str) or not token:
@@ -108,6 +107,7 @@ async def get_okato_code(
         # Подавляем ложное предупреждение PyCharm, т.к. get_fias_api_token - это awaitable wrapper
         # noinspection PyCallingNonCallable
         api_token = await get_fias_api_token(http_service)
+        logger.debug(f"TOKEN ФИАС: {api_token}")
         # noinspection PyCallingNonCallable
         answer = await process_getting_code(
             address_string,

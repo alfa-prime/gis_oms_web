@@ -5,7 +5,7 @@ from fastapi import APIRouter, Query, Depends, Request, HTTPException, status
 
 from app.core import HTTPXClient, get_settings, get_http_service, HandbooksStorage, logger
 from app.services.handbooks.nsi_ffoms import fetch_and_process_handbook
-from app.services.handbooks.nsi_ffoms_maps import NSI_HANDBOOKS_MAP
+from temp.backup.nsi_ffoms_maps import NSI_HANDBOOKS_MAP
 
 router = APIRouter(prefix="/nsi_foms_handbooks", tags=["Справочники НСИ ФОМС"])
 

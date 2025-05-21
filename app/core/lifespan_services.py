@@ -6,9 +6,10 @@ import redis.asyncio as redis
 from fastapi import FastAPI
 
 from app.core import logger, get_settings, load_handbook, HandbooksStorage, HTTPXClient
+from app.core.mappings import nsi_handbooks_mapper
 from app.services.handbooks.sync_evmias import sync_referred_by, sync_referred_org
 from app.services.cookies.cookies import get_new_cookies, check_existing_cookies, load_cookies_from_redis
-from app.services.handbooks.nsi_ffoms_maps import NSI_HANDBOOKS_MAP
+# from app.services.handbooks.nsi_ffoms_maps import NSI_HANDBOOKS_MAP
 from app.services.handbooks.nsi_ffoms import fetch_and_process_handbook
 
 settings = get_settings()
@@ -108,16 +109,18 @@ async def load_all_handbooks(app: FastAPI) -> None:
     NSI_CODES_TO_PROCESS = [
         "F002",  # страховые компании
         "F032",  # медицинские организации
+        "V002",  # профиль медицинской помощи
         "V005",  # Классификатор пола
-
+        "V006",  # условия оказания медицинской помощи
+        "V014",  # формы оказания медицинской помощи
     ]
 
     # Определяем все ожидаемые ключи в storage (ЕВМИАС + НСИ)
     expected_storage_keys = list(EVMIAS_SYNC_MAP.keys())
     for code in NSI_CODES_TO_PROCESS:
-        details = NSI_HANDBOOKS_MAP.get(code)
+        details = nsi_handbooks_mapper.get(code)
         if details:
-            # Используем storage_key из MAP, если он там есть, иначе генерируем из filename
+            # Используем handbook_storage_key из MAP, если он там есть, иначе генерируем из filename
             storage_key = details.get("handbook_storage_key")
             expected_storage_keys.append(storage_key)
     expected_storage_keys = list(set(expected_storage_keys))
@@ -177,7 +180,7 @@ async def load_all_handbooks(app: FastAPI) -> None:
             else:
                 # Ищем соответствующий NSI код по storage_key (key_name)
                 found_nsi_code = None
-                for code, details in NSI_HANDBOOKS_MAP.items():
+                for code, details in nsi_handbooks_mapper.items():
                     current_storage_key = details.get("handbook_storage_key")
                     if current_storage_key == key_name and code in NSI_CODES_TO_PROCESS:
                         found_nsi_code = code
@@ -192,9 +195,9 @@ async def load_all_handbooks(app: FastAPI) -> None:
                     # Обернем вызов в корутину, которая обновит storage
                     async def nsi_sync_wrapper(code_to_sync, key_to_update):
                         try:
-                            data = await fetch_and_process_handbook(code_to_sync, http_client)
-                            if data:
-                                handbooks_storage.handbooks[key_to_update] = data
+                            data_ = await fetch_and_process_handbook(code_to_sync, http_client)
+                            if data_:
+                                handbooks_storage.handbooks[key_to_update] = data_
                                 return True  # Возвращаем True при успехе
                             else:
                                 return False  # Возвращаем False, если данные не получены/обработаны

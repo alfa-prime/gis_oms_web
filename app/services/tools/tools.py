@@ -2,17 +2,65 @@ import json
 import zipfile
 import aiofiles
 
-from typing import List, Dict
+from typing import List, Dict, Optional, Any, Union
 from pathlib import Path as SyncPath
 from aiopath import Path as AsyncPath
 from fastapi import HTTPException, status
 
-from app.core.config import get_settings
+from app.core import get_settings, HandbooksStorage
 from app.core.logger_setup import logger
 
 settings = get_settings()
 
 HANDBOOKS_DIR = SyncPath(settings.HANDBOOKS_DIR)
+
+
+
+def get_handbook_payload(
+        handbooks_storage: HandbooksStorage,
+        handbook_name: str,
+        event_id: Optional[str] = None,
+) -> Optional[Union[Dict[str, Any], Any]]:
+    """
+    Безопасно извлекает "полезную нагрузку" из конкретного справочника.
+    Если справочник содержит ключ 'data' и его значение - словарь, возвращает этот словарь.
+    В противном случае возвращает все содержимое справочника "как есть" (если оно не None).
+    """
+    log_prefix = f"Event {event_id}: " if event_id else ""
+    if not handbooks_storage or not hasattr(handbooks_storage, 'handbooks') or not isinstance(
+            handbooks_storage.handbooks, dict):
+        logger.warning(
+            f"{log_prefix}HandbooksStorage не инициализирован или некорректен. Справочник '{handbook_name}' не загружен.")
+        return None
+
+    handbook_content = handbooks_storage.handbooks.get(handbook_name)
+
+    if handbook_content is None:
+        logger.warning(f"{log_prefix}Справочник '{handbook_name}' не найден в HandbooksStorage.")
+        return None
+
+    if isinstance(handbook_content, dict):
+        if 'data' in handbook_content:  # Проверяем наличие ключа 'data'
+            data_payload = handbook_content.get('data')
+            if data_payload is not None:
+                if not isinstance(data_payload, dict):
+                    logger.warning(
+                        f"{log_prefix}Полезная нагрузка 'data' в справочнике '{handbook_name}' не является словарем "
+                        f"(тип: {type(data_payload)}).")
+                    return None
+                return data_payload
+            else:
+                logger.warning(f"{log_prefix}Справочник '{handbook_name}' содержит ключ 'data', но его значение None.")
+                return None
+        else:
+            logger.debug(
+                f"{log_prefix}Справочник '{handbook_name}' не имеет ключа 'data', возвращаем его содержимое как есть.")
+            return handbook_content
+    else:
+        logger.warning(
+            f"{log_prefix}Содержимое справочника '{handbook_name}' не является словарем (тип: {type(handbook_content)}). "
+            f"Возвращаем как есть.")
+        return handbook_content
 
 
 async def save_file(file_path: str, content: bytes) -> None:
@@ -98,3 +146,6 @@ async def save_handbook(data: List[Dict] | dict, filename: str) -> None:
     await AsyncPath(HANDBOOKS_DIR).mkdir(parents=True, exist_ok=True)
     async with aiofiles.open(output_path, "w", encoding="utf-8") as f:
         await f.write(json.dumps(data, ensure_ascii=False, indent=2))
+
+
+
