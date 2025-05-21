@@ -1,18 +1,12 @@
-from pathlib import Path as SyncPath
 from typing import Annotated
 
 from fastapi import APIRouter, Query, Depends, Request, HTTPException, status
 
-from app.core import HTTPXClient, get_settings, get_http_service, HandbooksStorage, logger
+from app.core import HTTPXClient, get_http_service, HandbooksStorage, logger
+from app.core.mappings import nsi_handbooks_mapper
 from app.services.handbooks.nsi_ffoms import fetch_and_process_handbook
-from temp.backup.nsi_ffoms_maps import NSI_HANDBOOKS_MAP
 
 router = APIRouter(prefix="/nsi_foms_handbooks", tags=["Справочники НСИ ФОМС"])
-
-settings = get_settings()
-BASE_URL = "https://nsi.ffoms.ru"
-HANDBOOKS_DIR = SyncPath(settings.HANDBOOKS_DIR)
-TEMP_DIR = SyncPath(settings.TEMP_DIR)
 
 
 @router.get(
@@ -29,7 +23,7 @@ async def get_or_update_nsi_handbook(
     """Скачивает/сохраняет справочник НСИ и обновляет его в памяти."""
     try:
         handbooks_storage: HandbooksStorage = request.app.state.handbooks_storage
-        details = NSI_HANDBOOKS_MAP[code]
+        details = nsi_handbooks_mapper[code]
         storage_key = details["handbook_storage_key"]
     except (AttributeError, KeyError):
         raise HTTPException(
