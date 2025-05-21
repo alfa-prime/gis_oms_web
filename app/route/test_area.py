@@ -25,9 +25,9 @@ async def smo_name_by_id(
 ):
     url = BASE_URL
     headers = HEADERS
-    params = {"c": "Stick", "m": "loadEvnStickGrid"}
+    params = {"c": "EvnSection", "m": "loadEvnSectionGrid"}
     data = {
-        "EvnStick_pid": "3010101196271827",
+        "EvnSection_pid": "3010101196271827",
     }
 
     response = await http_service.fetch(

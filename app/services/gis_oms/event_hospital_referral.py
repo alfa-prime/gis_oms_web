@@ -43,10 +43,10 @@ async def _get_raw_referred_data(event_id: str, cookies: dict[str, str], http_se
 
     json_response = response.get('json')
     if not json_response or not isinstance(json_response, list) or len(json_response) == 0:
-        logger.error(f"Ответ loadEvnPSEditForm для события {event_id} пустой или имеет неверный формат.")
+        logger.error(f"Event {event_id}: Запрос referred_data пустой или имеет неверный формат.")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Некорректный ответ от ЕВМИАС (loadEvnPSEditForm) для события {event_id}"
+            detail=f"Некорректный ответ от ЕВМИАС (referred_data) для события {event_id}"
         )
     return json_response[0]
 
@@ -275,6 +275,51 @@ async def _get_and_set_medical_care_form(
         logger.warning(f"Event {event_id}: Справочник V014 ('medical_care_forms') не словарь или не загружен.")
 
 
+async def _get_raw_movement_data(event_id: str, cookies: dict[str, str], http_service: HTTPXClient) -> dict[str, str]:
+    """
+    Получает информацию о движении пациента путем запроса к ЕВМИАС
+    """
+    url = settings.BASE_URL
+    headers = {"Origin": settings.BASE_HEADERS_ORIGIN_URL, "Referer": settings.BASE_HEADERS_REFERER_URL}
+    params = {"c": "EvnSection", "m": "loadEvnSectionGrid"}
+    data = {"EvnSection_pid": event_id}
+
+    response = await http_service.fetch(
+        url=url,
+        method="POST",
+        cookies=cookies,
+        headers=headers,
+        params=params,
+        data=data,
+        raise_for_status=True  # fetch выкинет HTTPStatusError если не 2xx
+    )
+    json_response = response.get('json')
+    if not json_response or not isinstance(json_response, list) or len(json_response) == 0:
+        logger.error(f"Event {event_id}: Запрос movement_data пустой или имеет неверный формат.")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Некорректный ответ от ЕВМИАС (movement_data) для события {event_id}"
+        )
+    return json_response[0]
+
+
+# async def _get_and_set_medical_care_profile(
+#         event: Event,
+#         handbooks_storage: HandbooksStorage,
+#         cookies: dict[str, str],
+#         http_service: HTTPXClient
+# ) -> None:
+#     """
+#     Получает профиль медпомощи посредством запроса к ЕВМИАС о движении пациента
+#     и добавляет соответствующий код из справочника фонда V002 к сведениям о направлении
+#     """
+#     event_id = event.service.event_id
+#     event.referral.medical_care_profile_id = None
+#
+#     raw_movement_data = await _get_raw_movement_data(event_id, cookies, http_service)
+#     logger.debug(f"Полученные данные о движении пациента: {raw_movement_data}")
+
+
 async def enrich_event_hospital_referral(
         event: Event,
         handbooks_storage: HandbooksStorage,
@@ -288,11 +333,13 @@ async def enrich_event_hospital_referral(
 
         # получаем сведения о направлении на госпитализацию посредством запроса к ЕВМИАС
         raw_referred_data = await _get_raw_referred_data(event_id, cookies, http_service)
+        raw_movement_data = await _get_raw_movement_data(event_id, cookies, http_service)
 
         await _get_and_set_referral_talon_date_and_number(event, raw_referred_data)
         await _get_and_set_referring_organization_details(event, handbooks_storage, raw_referred_data)
         await _get_and_set_medical_care_condition(event, handbooks_storage)
         await _get_and_set_medical_care_form(event, handbooks_storage, raw_referred_data)
+        # await _get_and_set_medical_care_profile(event, handbooks_storage, cookies, http_service)
 
         return event
 
